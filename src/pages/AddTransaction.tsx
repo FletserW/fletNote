@@ -1,7 +1,9 @@
+//src/pages/AddTransactions.tsx
 import { useState } from 'react'
 import { addTransaction } from '../services/financeService'
 import { useNavigate } from 'react-router-dom'
-import type { TransactionType } from '../types/Transaction'
+
+
 
 // Ícones
 const Icons = {
@@ -69,7 +71,7 @@ const incomeCategories = [
 export default function AddTransaction() {
   const navigate = useNavigate()
 
-  const [type, setType] = useState<TransactionType>('expense')
+  const [type, setType] = useState<'income' | 'expense'>('expense');
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState('Outros')
   const [description, setDescription] = useState('')
@@ -79,7 +81,47 @@ export default function AddTransaction() {
   // Categorias baseadas no tipo
   const currentCategories = type === 'income' ? incomeCategories : expenseCategories
 
+  // Função de debug para testar storage
+  const testStorage = async () => {
+    console.log('🧪 Testando storage...');
+    
+    // Testar se localStorage está disponível
+    if (typeof localStorage === 'undefined') {
+      console.error('❌ localStorage não disponível!');
+      return false;
+    }
+    
+    try {
+      // Testar escrita
+      const testKey = '@finances/test';
+      const testValue = 'test_' + Date.now();
+      localStorage.setItem(testKey, testValue);
+      
+      // Testar leitura
+      const readValue = localStorage.getItem(testKey);
+      
+      if (readValue === testValue) {
+        console.log('✅ localStorage funcionando corretamente');
+        localStorage.removeItem(testKey);
+        return true;
+      } else {
+        console.error('❌ Falha na leitura do localStorage');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Erro no teste do localStorage:', error);
+      return false;
+    }
+  };
+
   async function handleSave() {
+    // Primeiro testar storage
+    const storageWorking = await testStorage();
+    if (!storageWorking) {
+      alert('Erro: Armazenamento local não está disponível. Tente recarregar a página.');
+      return;
+    }
+
     // Validações
     if (!amount || amount === '0') {
       alert('Digite um valor válido')
@@ -100,13 +142,23 @@ export default function AddTransaction() {
         ? new Date(customDate + 'T12:00:00').toISOString()
         : new Date().toISOString()
 
+      console.log('📝 Salvando transação com dados:', {
+        type,
+        amount: amountNumber,
+        category,
+        description,
+        date: dateToUse
+      });
+
       await addTransaction({
         type: type,
         amount: Math.abs(amountNumber),
         category,
-        description,
+        description: description || `Transação ${type === 'income' ? 'de entrada' : 'de gasto'}`,
         date: dateToUse
       })
+
+      console.log('✅ Transação salva com sucesso!');
 
       // Feedback visual antes de navegar
       setTimeout(() => {
@@ -114,8 +166,8 @@ export default function AddTransaction() {
       }, 300)
 
     } catch (error) {
-      console.error('Erro ao salvar transação:', error)
-      alert('Erro ao salvar transação')
+      console.error('❌ Erro ao salvar transação:', error)
+      alert('Erro ao salvar transação: ' + (error as Error).message)
       setIsLoading(false)
     }
   }
@@ -166,6 +218,8 @@ export default function AddTransaction() {
                 border: type === 'income' ? 'none' : '1px solid #334155'
               }}
               disabled={isLoading}
+              type="button"
+              aria-pressed={type === 'income'}
             >
               <div style={styles.typeButtonContent}>
                 <Icons.Income />
@@ -187,6 +241,8 @@ export default function AddTransaction() {
                 border: type === 'expense' ? 'none' : '1px solid #334155'
               }}
               disabled={isLoading}
+              type="button"
+              aria-pressed={type === 'expense'}
             >
               <div style={styles.typeButtonContent}>
                 <Icons.Expense />
@@ -218,6 +274,10 @@ export default function AddTransaction() {
               style={styles.amountInput}
               disabled={isLoading}
               autoFocus
+              id="transaction-amount"
+              name="amount"
+              aria-label="Valor da transação"
+              inputMode="decimal"
             />
           </div>
           <div style={styles.inputHint}>
@@ -241,6 +301,9 @@ export default function AddTransaction() {
             style={styles.textInput}
             disabled={isLoading}
             maxLength={100}
+            id="transaction-description"
+            name="description"
+            aria-label="Descrição da transação"
           />
           <div style={styles.charCount}>
             {description.length}/100 caracteres
@@ -275,6 +338,7 @@ export default function AddTransaction() {
                   border: category === cat ? 'none' : '1px solid #334155'
                 }}
                 disabled={isLoading}
+                aria-pressed={category === cat}
               >
                 {cat}
               </button>
@@ -301,6 +365,9 @@ export default function AddTransaction() {
             max={today}
             style={styles.dateInput}
             disabled={isLoading}
+            id="transaction-date"
+            name="date"
+            aria-label="Data da transação"
           />
         </div>
       </div>
@@ -311,6 +378,7 @@ export default function AddTransaction() {
           onClick={() => navigate('/')}
           style={styles.cancelButton}
           disabled={isLoading}
+          type="button"
         >
           Cancelar
         </button>
@@ -323,6 +391,7 @@ export default function AddTransaction() {
             cursor: isLoading ? 'not-allowed' : 'pointer'
           }}
           disabled={isLoading || !amount}
+          type="button"
         >
           {isLoading ? (
             <div style={styles.loadingSpinnerSmall}></div>
@@ -347,6 +416,8 @@ export default function AddTransaction() {
     </div>
   )
 }
+
+// Estilos permanecem os mesmos...
 
 // Estilos
 const styles = {

@@ -1,12 +1,43 @@
-import type { Goal } from '../types/Goal'
+// src/services/goalService.ts
+import { getCurrentGoal, saveGoal as saveGoalToStorage } from './storageService';
+import type { Goal } from '../types/Goal';
 
-const STORAGE_KEY = 'finance-goal'
+// Meta padrão
+const DEFAULT_GOAL: Goal = {
+  id: 1,
+  name: "PC Gamer",
+  target: 7000,
+  saved: 0,
+  createdAt: new Date().toISOString()
+};
 
-export async function getGoal(): Promise<Goal | null> {
-  const data = localStorage.getItem(STORAGE_KEY)
-  return data ? JSON.parse(data) : null
-}
+export const getGoal = async (): Promise<Goal> => {
+  const storedGoal = await getCurrentGoal();
+  
+  if (!storedGoal) {
+    // Se não tem meta salva, cria uma padrão
+    await saveGoalToStorage(DEFAULT_GOAL);
+    return DEFAULT_GOAL;
+  }
+  
+  return storedGoal;
+};
 
-export async function saveGoal(goal: Goal): Promise<void> {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(goal))
-}
+export const saveGoal = async (goal: Goal): Promise<void> => {
+  await saveGoalToStorage({
+    ...goal,
+    updatedAt: new Date().toISOString()
+  });
+};
+
+export const updateGoalSaved = async (amount: number): Promise<Goal> => {
+  const currentGoal = await getGoal();
+  const updatedGoal = {
+    ...currentGoal,
+    saved: Math.min(currentGoal.saved + amount, currentGoal.target),
+    updatedAt: new Date().toISOString()
+  };
+  
+  await saveGoal(updatedGoal);
+  return updatedGoal;
+};
