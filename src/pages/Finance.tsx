@@ -1,3 +1,4 @@
+// src/pages/Finance.tsx - ATUALIZE OS IMPORTS
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -5,13 +6,14 @@ import {
   calculateSummary,
   addTransaction,
 } from "../services/financeService";
-
+import { saveAllTransactions } from "../services/storageService"; // Adicionar clearAllData
 import { requestNotificationPermission } from "../services/notificationService";
 import { getGoal, saveGoal } from "../services/goalService";
-import { useAuth } from "../contexts";
+import { useAuth } from "../contexts"; // AuthContext já deve ter função de logout
 import type { Goal } from "../types/Goal";
 import { firebaseService } from "../services/firebase";
-import { useFirebaseSync } from '../hooks/useFirebaseSync';
+import { useFirebaseSync } from "../hooks/useFirebaseSync";
+import { getAuth, signOut } from "firebase/auth"; // Adicionar imports do Firebase Auth
 
 // Ícones simples em SVG
 const Icons = {
@@ -163,6 +165,20 @@ const Icons = {
       <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
     </svg>
   ),
+  Logout: () => (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  ),
 };
 
 export default function Finance() {
@@ -170,6 +186,7 @@ export default function Finance() {
   const today = new Date();
   const isMounted = useRef(true);
   const { user, loading: authLoading } = useAuth();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -179,14 +196,22 @@ export default function Finance() {
     name: "PC Gamer",
     target: 7000,
     saved: 0,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   });
   const [monthData, setMonthData] = useState({ income: 0, expense: 0 });
-  const [dataSource, setDataSource] = useState<'local' | 'firebase'>('local');
+  const [dataSource, setDataSource] = useState<"local" | "firebase">("local");
   const [lastSync, setLastSync] = useState<string | null>(null);
-  const [syncStatus, setSyncStatus] = useState<{ success: boolean; message: string } | null>(null);
+  const [syncStatus, setSyncStatus] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
-
+  const {
+    isSyncing: syncInProgress,
+    syncData,
+    loadInitialData,
+    shouldSync,
+  } = useFirebaseSync();
 
   // Refs para controle de sincronização
   const hasLoadedInitialData = useRef(false);
@@ -196,6 +221,7 @@ export default function Finance() {
   /* ============================
      LOAD ALL DATA (sistema híbrido)
   ============================ */
+  // src/pages/Finance.tsx - ATUALIZE A FUNÇÃO loadAllData
   const loadAllData = useCallback(
     async (showLoading = true) => {
       if (!isMounted.current) return;
@@ -206,22 +232,22 @@ export default function Finance() {
 
       try {
         // Determina fonte de dados
-        const source = user ? 'firebase' : 'local';
+        const source = user ? "firebase" : "local";
         setDataSource(source);
-        
+
         console.log(`📊 Carregando dados de: ${source}`);
         if (user) {
-          console.log(`👤 Usuário: ${user.email}`);
+          console.log(`👤 Usuário: ${user.email} (${user.uid})`);
         }
 
-        // Carrega transações e calcula sumário
+        // 🔥 IMPORTANTE: Carrega transações usando a função atualizada que busca do Firestore
         const data = await getTransactionsByFilter(
           today.getMonth() + 1,
           today.getFullYear(),
         );
-        
+
         console.log(`📈 ${data.length} transações carregadas`);
-        
+
         const summary = calculateSummary(data);
 
         // Atualiza estados apenas se o componente ainda estiver montado
@@ -243,17 +269,71 @@ export default function Finance() {
 
         // Atualiza timestamp da última sincronização
         if (isMounted.current) {
-          setLastSync(new Date().toLocaleTimeString('pt-BR', {
-            hour: '2-digit',
-            minute: '2-digit'
-          }));
+          setLastSync(
+            new Date().toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          );
         }
 
         // Marcar que dados iniciais foram carregados
         hasLoadedInitialData.current = true;
 
+        // 🔥 ATUALIZADO: Verificar dados no Firestore para debug
+        if (user?.uid) {
+          const firestoreTransactions =
+            await firebaseService.getUserTransactions(user.uid);
+          console.log(
+            `🔥 Firestore tem: ${firestoreTransactions.length} transações`,
+          );
+
+          // Se não houver transações no Firestore mas houver localmente, sincronizar
+          if (firestoreTransactions.length === 0 && data.length > 0) {
+            console.log(
+              "🔄 Nenhuma transação no Firestore, iniciando primeira sincronização...",
+            );
+            // Aguardar um pouco antes de sincronizar
+            setTimeout(async () => {
+              try {
+                await firebaseService.syncTransactions(user.uid, data);
+                console.log("✅ Primeira sincronização concluída!");
+              } catch (error) {
+                console.error("❌ Erro na primeira sincronização:", error);
+              }
+            }, 3000);
+          }
+        }
       } catch (error) {
         console.error("❌ Erro ao carregar dados:", error);
+
+        // 🔥 NOVO: Em caso de erro no Firestore, tentar carregar apenas do localStorage
+        if (user?.uid) {
+          console.log(
+            "⚠️ Erro no Firestore, tentando carregar do localStorage...",
+          );
+          try {
+            const localData = await getTransactionsByFilter(
+              today.getMonth() + 1,
+              today.getFullYear(),
+            );
+
+            const summary = calculateSummary(localData);
+
+            if (isMounted.current) {
+              setTotal(summary.total);
+              setMonthData({
+                income: summary.income,
+                expense: summary.expense,
+              });
+            }
+          } catch (localError) {
+            console.error(
+              "❌ Erro ao carregar do localStorage também:",
+              localError,
+            );
+          }
+        }
       } finally {
         if (isMounted.current && showLoading) {
           setIsLoading(false);
@@ -262,6 +342,317 @@ export default function Finance() {
     },
     [today, goal, user],
   );
+
+  const handleLogout = async () => {
+    const confirmLogout = window.confirm(
+      "Tem certeza que deseja sair?\n\n" +
+        "✅ Seus dados já estão sincronizados na nuvem\n" +
+        "✅ Você poderá acessar de qualquer dispositivo\n" +
+        "❌ Dados não sincronizados serão perdidos localmente",
+    );
+
+    if (!confirmLogout) return;
+
+    try {
+      setIsLoading(true);
+      console.log("🚪 Iniciando logout...");
+
+      // 1. Garantir última sincronização
+      if (user?.uid) {
+        console.log("🔄 Fazendo última sincronização...");
+        try {
+          const data = await getTransactionsByFilter(
+            today.getMonth() + 1,
+            today.getFullYear(),
+          );
+
+          if (data.length > 0) {
+            await firebaseService.syncTransactions(user.uid, data);
+            console.log("✅ Última sincronização concluída");
+          }
+        } catch (syncError) {
+          console.warn("⚠️ Erro na última sincronização:", syncError);
+        } finally {
+          setShowLogoutModal(false);
+          setIsLoading(false);
+        }
+      }
+
+      // 2. Fazer logout do Firebase
+      try {
+        const auth = getAuth();
+        await signOut(auth);
+        console.log("✅ Logout do Firebase realizado");
+      } catch (firebaseError) {
+        console.error("❌ Erro no logout do Firebase:", firebaseError);
+      }
+
+      // 3. Limpar dados locais (opcional - comentado por padrão)
+      // Descomente a linha abaixo se quiser limpar dados locais ao fazer logout
+      // clearAllData();
+
+      // 4. Limpar indicadores de sincronização
+      localStorage.removeItem("@finances/last_sync");
+      localStorage.removeItem("@finances/last_sync_attempt");
+
+      // 5. Feedback ao usuário
+      alert(
+        "✅ Logout realizado com sucesso!\n\n" +
+          "Seus dados estão seguros na nuvem ☁️\n" +
+          "Faça login novamente para acessá-los.",
+      );
+
+      // 6. Redirecionar para login
+      navigate("/login");
+    } catch (error) {
+      console.error("❌ Erro durante o logout:", error);
+      alert("Erro ao fazer logout. Tente novamente.");
+      setIsLoading(false);
+    }
+  };
+
+  // src/pages/Finance.tsx - ADICIONE ESTA FUNÇÃO
+  const verifyDataSources = async () => {
+    if (!user?.uid) {
+      alert("Faça login primeiro");
+      return;
+    }
+
+    try {
+      console.log("🔍 Verificando fontes de dados...");
+
+      // 1. Ver transações no Firestore
+      const firestoreTransactions = await firebaseService.getUserTransactions(
+        user.uid,
+      );
+      console.log("🔥 Firestore:", {
+        count: firestoreTransactions.length,
+        transactions: firestoreTransactions.slice(0, 5), // Primeiras 5
+      });
+
+      // 2. Ver transações no localStorage
+      const localTransactions = await getTransactionsByFilter(
+        today.getMonth() + 1,
+        today.getFullYear(),
+      );
+      console.log("💾 Local:", {
+        count: localTransactions.length,
+        transactions: localTransactions.slice(0, 5),
+      });
+
+      // 3. Comparar
+      const firestoreIds = firestoreTransactions
+        .map((t) => t.id)
+        .filter(Boolean);
+      const localIds = localTransactions.map((t) => t.id).filter(Boolean);
+
+      const inFirestoreNotLocal = firestoreTransactions.filter(
+        (ft) => !localIds.includes(ft.id),
+      );
+      const inLocalNotFirestore = localTransactions.filter(
+        (lt) => !firestoreIds.includes(lt.id),
+      );
+
+      console.log("🔍 Comparação:", {
+        "Firestore → Local": inFirestoreNotLocal.length,
+        "Local → Firestore": inLocalNotFirestore.length,
+      });
+
+      alert(`📊 Resultado:\n
+Firestore: ${firestoreTransactions.length} transações\n
+Local: ${localTransactions.length} transações\n
+Faltam no Local: ${inFirestoreNotLocal.length}\n
+Faltam no Firestore: ${inLocalNotFirestore.length}\n
+\n📝 Dica: Use "Reset Firestore" para corrigir discrepâncias.`);
+    } catch (error) {
+      console.error("❌ Erro na verificação:", error);
+      alert(`Erro: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  // Adicione um botão para chamar esta função no JSX:
+  <button
+    onClick={verifyDataSources}
+    style={{
+      position: "fixed",
+      bottom: "320px",
+      left: "20px",
+      padding: "10px 15px",
+      background: "#3b82f6",
+      color: "white",
+      border: "none",
+      borderRadius: "8px",
+      fontSize: "12px",
+      zIndex: 1000,
+      cursor: "not-allowed;", //pointer or not-allowed;
+      opacity: 0
+    }}
+  >
+    🔍 Verificar Dados
+  </button>;
+
+  useEffect(() => {
+    isMounted.current = true;
+    requestNotificationPermission();
+
+    // Função de inicialização SIMPLIFICADA
+    const initializeData = async () => {
+      if (user?.uid) {
+        console.log("🚀 Usuário logado - Firestore como master");
+
+        // 1. SEMPRE carregar do Firestore primeiro
+        const success = await loadInitialData(user.uid);
+
+        if (success) {
+          // 2. Depois exibir os dados
+          await loadAllData(true);
+
+          // 3. Sincronizar em background (apenas envia locais que faltam)
+          setTimeout(() => {
+            if (isMounted.current) {
+              safeSyncWithFirebase();
+            }
+          }, 3000);
+        }
+      } else {
+        // Usuário não logado - apenas carrega local
+        await loadAllData(true);
+      }
+    };
+
+    // Executa inicialização apenas uma vez
+    if (!hasLoadedInitialData.current) {
+      initializeData();
+      hasLoadedInitialData.current = true;
+    }
+
+    return () => {
+      isMounted.current = false;
+      clearSyncTimeout();
+    };
+  }, []);
+
+  // Atualize a função safeSyncWithFirebase:
+  const safeSyncWithFirebase = useCallback(async () => {
+    if (!user?.uid || syncInProgress) {
+      return;
+    }
+
+    // Verificar se precisa sincronizar
+    if (!shouldSync()) {
+      console.log("⏸️  Última sincronização recente, pulando...");
+      return;
+    }
+
+    setSyncStatus(null);
+
+    try {
+      console.log("🔄 Sincronizando com Firestore (master)...");
+
+      // Usar syncData normal (não forceDownload)
+      const result = await syncData(user.uid, false);
+
+      setSyncStatus({
+        success: result.success,
+        message: result.message,
+      });
+
+      if (result.success) {
+        setLastSync(
+          new Date().toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        );
+
+        // Recarregar dados para exibir versão atualizada
+        await loadAllData(false);
+        console.log("🎉 Sincronização Firestore concluída!");
+      }
+    } catch (error) {
+      console.error("❌ Erro na sincronização:", error);
+      setSyncStatus({
+        success: false,
+        message: `Erro: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
+      });
+    }
+  }, [user, syncInProgress, syncData, shouldSync, loadAllData]);
+
+  // NOVA FUNÇÃO: Forçar download do Firestore (sobrescreve tudo)
+  const forceDownloadFromFirestore = useCallback(
+    async (userId: string): Promise<boolean> => {
+      try {
+        console.log("⬇️ Forçando download do Firestore...");
+
+        // 1. Baixar tudo do Firestore
+        const remoteTransactions =
+          await firebaseService.getUserTransactions(userId);
+        const remoteGoal = await firebaseService.getUserGoal(userId);
+
+        // 2. Sobrescrever completamente o localStorage
+        await saveAllTransactions(remoteTransactions, userId);
+
+        if (remoteGoal) {
+          await saveGoal(remoteGoal);
+        }
+
+        console.log(
+          `✅ Download forçado: ${remoteTransactions.length} transações`,
+        );
+
+        // 3. Atualizar timestamp
+
+        localStorage.setItem("@finances/last_sync", new Date().toISOString());
+
+        return true;
+      } catch (error) {
+        console.error("❌ Erro no download forçado:", error);
+        return false;
+      }
+    },
+    [],
+  );
+
+  // Adicione função para forçar reset (corrigir duplicatas)
+  const forceFirestoreReset = async () => {
+    if (!user?.uid) {
+      alert("Faça login primeiro");
+      return;
+    }
+
+    const confirmReset = window.confirm(
+      "⚠️ ISSO VAI:\n" +
+        "1. Baixar TUDO do Firestore\n" +
+        "2. Sobrescrever dados locais\n" +
+        "3. Corrigir todas duplicatas\n\n" +
+        "Tem certeza?",
+    );
+
+    if (!confirmReset) return;
+
+    try {
+      console.log("🔄 Forçando reset do Firestore...");
+
+      // 1. Baixar tudo do Firestore
+      const success = await forceDownloadFromFirestore(user.uid);
+
+      if (success) {
+        // 2. Recarregar dados
+        await loadAllData(false);
+
+        alert("✅ Reset completo!\nAgora usando Firestore como fonte única.");
+      } else {
+        alert("❌ Falha no reset. Tente novamente.");
+      }
+    } catch (error) {
+      console.error("❌ Erro no reset:", error);
+      alert("Erro ao fazer reset");
+    }
+  };
 
   /* ============================
      FUNÇÃO PARA LIMPAR TIMEOUT
@@ -274,135 +665,149 @@ export default function Finance() {
   }, []);
 
   // Adicione esta função no componente Finance
-const testFirestoreDirectly = async () => {
-  try {
-    console.log('🧪 Testando Firestore diretamente...');
-    
-    if (!user?.uid) {
-      alert('Faça login primeiro');
-      return;
-    }
-    
-    // Importar módulos do Firebase
-    const { initializeApp } = await import('firebase/app');
-    const { getFirestore, doc, setDoc, getDoc, Timestamp } = await import('firebase/firestore');
-    
-    // Configuração (mesma que já está usando)
-    const config = {
-      apiKey: "AIzaSyAJPxldozWGXPtjdYs4vFWEfv3-9PZqVwQ",
-      authDomain: "fletnote.firebasestorage.app",
-      projectId: "fletnote",
-      storageBucket: "fletnote.firebasestorage.app",
-      messagingSenderId: "436047979950",
-      appId: "1:436047979950:web:08fb16c668eaf557d7d43f",
-      measurementId: "G-1CV80ZBK4H"
-    };
-    
-    // Inicializar app separado para teste
-    const testApp = initializeApp(config, 'test-' + Date.now());
-    const testDb = getFirestore(testApp);
-    
-    // Teste 1: Escrever um documento
-    const testRef = doc(testDb, 'users', user.uid, 'test_transactions', 'test_' + Date.now());
-    const testData = {
-      type: 'income',
-      amount: 100.50,
-      category: 'Teste',
-      description: 'Teste direto do componente',
-      date: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      test: true,
-      timestamp: Timestamp.now()
-    };
-    
-    console.log('📝 Escrevendo documento de teste...', testData);
-    await setDoc(testRef, testData);
-    console.log('✅ Documento escrito');
-    
-    // Teste 2: Ler o documento
-    const docSnap = await getDoc(testRef);
-    if (docSnap.exists()) {
-      console.log('✅ Documento lido:', docSnap.data());
-      alert('🎉 Firestore funcionando! Documento salvo e lido com sucesso.');
-      
-      // Mostrar no console
-      console.log('📄 Documento salvo no Firestore:', {
-        id: docSnap.id,
-        data: docSnap.data(),
-        path: docSnap.ref.path
-      });
-    } else {
-      alert('⚠️ Documento não encontrado após escrita');
-    }
-    
-  } catch (error) {
-    console.error('❌ ERRO no teste do Firestore:', error);
-    alert(`❌ Erro: ${error instanceof Error ? error.message : String(error)}`);
-  }
-};
+  const testFirestoreDirectly = async () => {
+    try {
+      console.log("🧪 Testando Firestore diretamente...");
 
-const checkFirestoreData = async () => {
-  try {
-    if (!user?.uid) {
-      alert('Faça login primeiro');
-      return;
-    }
-    
-    console.log('🔍 Verificando dados no Firestore...');
-    
-    // Usar o serviço real para buscar transações
-    const remoteTransactions = await firebaseService.getUserTransactions(user.uid);
-    const remoteGoal = await firebaseService.getUserGoal(user.uid);
-    
-    console.log('📊 Dados no Firestore:', {
-      transactionsCount: remoteTransactions.length,
-      transactions: remoteTransactions,
-      goal: remoteGoal
-    });
-    
-    alert(`Firestore tem:\n${remoteTransactions.length} transações\nMeta: ${remoteGoal ? 'Sim' : 'Não'}`);
-    
-    // Se não houver transações, vamos sincronizar uma de teste
-    if (remoteTransactions.length === 0) {
-      const syncTest = confirm('Nenhuma transação no Firestore. Deseja sincronizar uma de teste?');
-      if (syncTest) {
-        const testTx = {
-          type: 'income' as const,
-          amount: 99.99,
-          category: 'Teste',
-          description: 'Transação de teste para Firestore',
-          date: new Date().toISOString(),
-          createdAt: new Date().toISOString()
-        };
-        
-        await firebaseService.syncTransactions(user.uid, [testTx]);
-        alert('✅ Transação de teste sincronizada! Verifique novamente.');
+      if (!user?.uid) {
+        alert("Faça login primeiro");
+        return;
       }
-    }
-    
-  } catch (error) {
-    console.error('❌ Erro ao verificar Firestore:', error);
-    alert(`Erro: ${error instanceof Error ? error.message : String(error)}`);
-  }
-};
 
-// Adicione este botão no seu JSX:
+      // Importar módulos do Firebase
+      const { initializeApp } = await import("firebase/app");
+      const { getFirestore, doc, setDoc, getDoc, Timestamp } =
+        await import("firebase/firestore");
+
+      // Configuração (mesma que já está usando)
+      const config = {
+        apiKey: "AIzaSyAJPxldozWGXPtjdYs4vFWEfv3-9PZqVwQ",
+        authDomain: "fletnote.firebasestorage.app",
+        projectId: "fletnote",
+        storageBucket: "fletnote.firebasestorage.app",
+        messagingSenderId: "436047979950",
+        appId: "1:436047979950:web:08fb16c668eaf557d7d43f",
+        measurementId: "G-1CV80ZBK4H",
+      };
+
+      // Inicializar app separado para teste
+      const testApp = initializeApp(config, "test-" + Date.now());
+      const testDb = getFirestore(testApp);
+
+      // Teste 1: Escrever um documento
+      const testRef = doc(
+        testDb,
+        "users",
+        user.uid,
+        "test_transactions",
+        "test_" + Date.now(),
+      );
+      const testData = {
+        type: "income",
+        amount: 100.5,
+        category: "Teste",
+        description: "Teste direto do componente",
+        date: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        test: true,
+        timestamp: Timestamp.now(),
+      };
+
+      console.log("📝 Escrevendo documento de teste...", testData);
+      await setDoc(testRef, testData);
+      console.log("✅ Documento escrito");
+
+      // Teste 2: Ler o documento
+      const docSnap = await getDoc(testRef);
+      if (docSnap.exists()) {
+        console.log("✅ Documento lido:", docSnap.data());
+        alert("🎉 Firestore funcionando! Documento salvo e lido com sucesso.");
+
+        // Mostrar no console
+        console.log("📄 Documento salvo no Firestore:", {
+          id: docSnap.id,
+          data: docSnap.data(),
+          path: docSnap.ref.path,
+        });
+      } else {
+        alert("⚠️ Documento não encontrado após escrita");
+      }
+    } catch (error) {
+      console.error("❌ ERRO no teste do Firestore:", error);
+      alert(
+        `❌ Erro: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  };
+
+  const checkFirestoreData = async () => {
+    try {
+      if (!user?.uid) {
+        alert("Faça login primeiro");
+        return;
+      }
+
+      console.log("🔍 Verificando dados no Firestore...");
+
+      // Usar o serviço real para buscar transações
+      const remoteTransactions = await firebaseService.getUserTransactions(
+        user.uid,
+      );
+      const remoteGoal = await firebaseService.getUserGoal(user.uid);
+
+      console.log("📊 Dados no Firestore:", {
+        transactionsCount: remoteTransactions.length,
+        transactions: remoteTransactions,
+        goal: remoteGoal,
+      });
+
+      alert(
+        `Firestore tem:\n${remoteTransactions.length} transações\nMeta: ${remoteGoal ? "Sim" : "Não"}`,
+      );
+
+      // Se não houver transações, vamos sincronizar uma de teste
+      if (remoteTransactions.length === 0) {
+        const syncTest = confirm(
+          "Nenhuma transação no Firestore. Deseja sincronizar uma de teste?",
+        );
+        if (syncTest) {
+          const testTx = {
+            type: "income" as const,
+            amount: 99.99,
+            category: "Teste",
+            description: "Transação de teste para Firestore",
+            date: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+          };
+
+          await firebaseService.syncTransactions(user.uid, [testTx]);
+          alert("✅ Transação de teste sincronizada! Verifique novamente.");
+        }
+      }
+    } catch (error) {
+      console.error("❌ Erro ao verificar Firestore:", error);
+      alert(`Erro: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  // Adicione este botão no seu JSX:
   <>
     // Adicione este botão no seu JSX:
     <button
       onClick={testFirestoreDirectly}
       style={{
-        position: 'fixed',
-        bottom: '160px',
-        left: '20px',
-        padding: '10px 15px',
-        background: '#f59e0b',
-        color: 'white',
-        border: 'none',
-        borderRadius: '8px',
-        fontSize: '12px',
+        position: "fixed",
+        bottom: "160px",
+        left: "20px",
+        padding: "10px 15px",
+        background: "#f59e0b",
+        color: "white",
+        border: "none",
+        borderRadius: "8px",
+        fontSize: "12px",
         zIndex: 1000,
-        cursor: 'pointer'
+        cursor: "not-allowed;", //pointer or not-allowed;
+          opacity: 0
       }}
     >
       🧪 Testar Firestore
@@ -411,18 +816,19 @@ const checkFirestoreData = async () => {
     <button
       onClick={async () => {
         if (!user?.uid) {
-          alert('Não logado');
+          alert("Não logado");
           return;
         }
 
-        console.log('🔍 Debug: Verificando autenticação...');
-        console.log('User object:', user);
-        console.log('User UID:', user.uid);
+        console.log("🔍 Debug: Verificando autenticação...");
+        console.log("User object:", user);
+        console.log("User UID:", user.uid);
 
         // Testar diretamente o Firestore
         try {
-          const { initializeApp } = await import('firebase/app');
-          const { getFirestore, doc, setDoc } = await import('firebase/firestore');
+          const { initializeApp } = await import("firebase/app");
+          const { getFirestore, doc, setDoc } =
+            await import("firebase/firestore");
 
           const config = {
             apiKey: "AIzaSyAJPxldozWGXPtjdYs4vFWEfv3-9PZqVwQ",
@@ -431,106 +837,53 @@ const checkFirestoreData = async () => {
             storageBucket: "fletnote.firebasestorage.app",
             messagingSenderId: "436047979950",
             appId: "1:436047979950:web:08fb16c668eaf557d7d43f",
-            measurementId: "G-1CV80ZBK4H"
+            measurementId: "G-1CV80ZBK4H",
           };
 
-          const testApp = initializeApp(config, 'debug-' + Date.now());
+          const testApp = initializeApp(config, "debug-" + Date.now());
           const testDb = getFirestore(testApp);
-          const testRef = doc(testDb, 'debug', 'test');
+          const testRef = doc(testDb, "debug", "test");
 
           await setDoc(testRef, {
             timestamp: new Date().toISOString(),
             userId: user.uid,
-            test: true
+            test: true,
           });
 
-          alert('✅ Firebase Auth e Firestore funcionando!');
-
+          alert("✅ Firebase Auth e Firestore funcionando!");
         } catch (error) {
-          console.error('❌ Erro no debug:', error);
-          alert(`❌ Erro: ${error instanceof Error ? error.message : String(error)}`);
+          console.error("❌ Erro no debug:", error);
+          alert(
+            `❌ Erro: ${error instanceof Error ? error.message : String(error)}`,
+          );
         }
-      } }
+      }}
       style={{
-        position: 'fixed',
-        bottom: '80px',
-        left: '20px',
-        padding: '10px',
-        background: '#ef4444',
-        color: 'white',
-        border: 'none',
-        borderRadius: '8px',
-        fontSize: '12px',
-        zIndex: 1000
+        position: "fixed",
+        bottom: "80px",
+        left: "20px",
+        padding: "10px",
+        background: "#ef4444",
+        color: "white",
+        border: "none",
+        borderRadius: "8px",
+        fontSize: "12px",
+        zIndex: 1000,
+        cursor: "not-allowed;", //pointer or not-allowed;
+          opacity: 0
       }}
     >
       🐛 Debug Auth
-    </button></>
+    </button>
+  </>;
 
   /* ============================
      SINCRONIZAÇÃO SEGURA
   ============================ */
   // No seu componente Finance, altere a função safeSyncWithFirebase:
 
-// Certifique-se de importar o firebaseService real:
+  // Certifique-se de importar o firebaseService real:
 
-
-// No Finance.tsx, atualize a função safeSyncWithFirebase:
-const { isSyncing: syncInProgress, syncData } = useFirebaseSync();
-
-const safeSyncWithFirebase = useCallback(async () => {
-  if (!user?.uid || syncInProgress || !hasLoadedInitialData.current) {
-    return;
-  }
-
-  // Verificar se já sincronizou recentemente
-  const lastSyncTime = localStorage.getItem('@finances/last_sync_attempt');
-  if (lastSyncTime) {
-    const lastSyncDate = new Date(lastSyncTime);
-    const now = new Date();
-    const diffMinutes = (now.getTime() - lastSyncDate.getTime()) / (1000 * 60);
-    
-    if (diffMinutes < 1) {
-      console.log('⏸️  Sincronização recente, aguardando...');
-      return;
-    }
-  }
-
-  setSyncStatus(null);
-
-  try {
-    console.log('🔄 Iniciando sincronização com Firebase...');
-    console.log('👤 Usuário:', user.uid);
-    
-    // USAR A NOVA FUNÇÃO syncData DO HOOK
-    const result = await syncData(user.uid);
-
-    setSyncStatus({
-      success: result.success,
-      message: result.message
-    });
-
-    if (result.success) {
-      setLastSync(new Date().toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit'
-      }));
-
-      await loadAllData(false);
-      console.log('🎉 Sincronização concluída com sucesso!');
-    } else {
-      console.warn('⚠️ Sincronização falhou:', result.message);
-    }
-
-    hasSyncedAfterLogin.current = true;
-  } catch (error) {
-    console.error('❌ Erro na sincronização:', error);
-    setSyncStatus({
-      success: false,
-      message: `Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
-    });
-  }
-}, [user, loadAllData, syncData, syncInProgress]);
   /* ============================
      Sincronizar dados quando usuário faz login (COM DEBOUNCE)
   ============================ */
@@ -544,7 +897,7 @@ const safeSyncWithFirebase = useCallback(async () => {
 
     // Debounce de 3 segundos para evitar múltiplas sincronizações
     syncTimeoutRef.current = window.setTimeout(() => {
-      console.log('🔑 Usuário logado detectado, sincronizando em 3s...');
+      console.log("🔑 Usuário logado detectado, sincronizando em 3s...");
       safeSyncWithFirebase();
     }, 3000);
 
@@ -570,18 +923,18 @@ const safeSyncWithFirebase = useCallback(async () => {
       if (isMounted.current && hasLoadedInitialData.current) {
         // Debounce para evitar múltiplas recargas
         clearSyncTimeout();
-        
+
         syncTimeoutRef.current = window.setTimeout(() => {
           loadAllData(false);
         }, 1000);
       }
     };
 
-    window.addEventListener('focus', handleAuthChange);
+    window.addEventListener("focus", handleAuthChange);
 
     return () => {
       isMounted.current = false;
-      window.removeEventListener('focus', handleAuthChange);
+      window.removeEventListener("focus", handleAuthChange);
       clearSyncTimeout();
     };
   }, []);
@@ -613,10 +966,10 @@ const safeSyncWithFirebase = useCallback(async () => {
 
         // Atualiza meta localmente primeiro (feedback instantâneo)
         const newSaved = Math.min(goal.saved + amount, goal.target);
-        const updatedGoal = { 
-          ...goal, 
+        const updatedGoal = {
+          ...goal,
           saved: newSaved,
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
         };
 
         setGoal(updatedGoal);
@@ -625,7 +978,7 @@ const safeSyncWithFirebase = useCallback(async () => {
 
         // Recarrega dados sem mostrar loading
         await loadAllData(false);
-        
+
         // Sincronizar automaticamente se estiver logado
         if (user && !isSyncing) {
           // Debounce para sincronização após alteração
@@ -636,71 +989,80 @@ const safeSyncWithFirebase = useCallback(async () => {
         }
 
         // Feedback ao usuário
-        const source = user ? 'Firebase ☁️' : 'local 💾';
-        alert(`✅ R$ ${amount.toFixed(2)} adicionado ao cofre!\nSalvo em: ${source}`);
-        
+        const source = user ? "Firebase ☁️" : "local 💾";
+        alert(
+          `✅ R$ ${amount.toFixed(2)} adicionado ao cofre!\nSalvo em: ${source}`,
+        );
       } catch (error) {
         console.error("❌ Erro ao adicionar ao cofre:", error);
         alert("Erro ao adicionar valor ao cofre. Tente novamente.");
       }
     },
-    [total, goal, loadAllData, user, isSyncing, safeSyncWithFirebase, clearSyncTimeout],
+    [
+      total,
+      goal,
+      loadAllData,
+      user,
+      isSyncing,
+      safeSyncWithFirebase,
+      clearSyncTimeout,
+    ],
   );
 
-// No Finance.tsx, adicione:
-const forceSync = async () => {
-  if (!user?.uid) {
-    alert('Faça login primeiro');
-    return;
-  }
-  
-  console.log('🚀 Forçando sincronização manual...');
-  
-  // Limpar último sync para forçar
-  localStorage.removeItem('@finances/last_sync_attempt');
-  
-  // Chamar sincronização
-  const result = await syncData(user.uid);
-  
-  if (result.success) {
-    alert(`✅ Sincronização forçada:\n${result.message}`);
-    
-    // Recarregar dados
-    await loadAllData(false);
-  } else {
-    alert(`❌ Falha na sincronização:\n${result.message}`);
-  }
-};
+  // No Finance.tsx, adicione:
+  const forceSync = async () => {
+    if (!user?.uid) {
+      alert("Faça login primeiro");
+      return;
+    }
 
-// Botão para forçar sync
-<button 
-  onClick={forceSync}
-  disabled={isSyncing}
-  style={{
-    position: 'fixed',
-    bottom: '280px',
-    left: '20px',
-    padding: '10px 15px',
-    background: isSyncing ? '#64748b' : '#10b981',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '12px',
-    zIndex: 1000,
-    cursor: isSyncing ? 'not-allowed' : 'pointer'
-  }}
->
-  {isSyncing ? '⏳ Sincronizando...' : '🚀 Forçar Sync'}
-</button>
+    console.log("🚀 Forçando sincronização manual...");
+
+    // Limpar último sync para forçar
+    localStorage.removeItem("@finances/last_sync_attempt");
+
+    // Chamar sincronização
+    const result = await syncData(user.uid);
+
+    if (result.success) {
+      alert(`✅ Sincronização forçada:\n${result.message}`);
+
+      // Recarregar dados
+      await loadAllData(false);
+    } else {
+      alert(`❌ Falha na sincronização:\n${result.message}`);
+    }
+  };
+
+  // Botão para forçar sync
+  <button
+    onClick={forceSync}
+    disabled={isSyncing}
+    style={{
+      position: "fixed",
+      bottom: "280px",
+      left: "20px",
+      padding: "10px 15px",
+      background: isSyncing ? "#64748b" : "#10b981",
+      color: "white",
+      border: "none",
+      borderRadius: "8px",
+      fontSize: "12px",
+      zIndex: 1000,
+      cursor: isSyncing ? "not-allowed" : "pointer",
+    }}
+  >
+    {isSyncing ? "⏳ Sincronizando..." : "🚀 Forçar Sync"}
+  </button>;
 
   /* ============================
      MANUAL REFRESH (COM CONTROLE)
   ============================ */
   const handleManualRefresh = async () => {
     if (isLoading || isSyncing) return;
-    
+
     await loadAllData(true);
-    
+
     // Se estiver logado, sincronizar também
     if (user && !isSyncing) {
       clearSyncTimeout();
@@ -710,15 +1072,35 @@ const forceSync = async () => {
     }
   };
 
+  useEffect(() => {
+    if (user?.uid && !hasLoadedInitialData.current) {
+      const loadAndSync = async () => {
+        await loadAllData(true);
+
+        // Carregar dados iniciais do Firestore se necessário
+        await loadInitialData(user.uid);
+
+        // Sincronizar após carregar
+        setTimeout(() => {
+          safeSyncWithFirebase();
+        }, 2000);
+      };
+
+      loadAndSync();
+    }
+  }, [user, loadAllData, loadInitialData, safeSyncWithFirebase]);
+
   /* ============================
      MANUAL SYNC
   ============================ */
   const handleManualSync = async () => {
     if (isSyncing || !user) {
-      alert(user ? 'Sincronização em andamento...' : 'Faça login para sincronizar');
+      alert(
+        user ? "Sincronização em andamento..." : "Faça login para sincronizar",
+      );
       return;
     }
-    
+
     await safeSyncWithFirebase();
   };
 
@@ -739,21 +1121,23 @@ const forceSync = async () => {
 
   const progress = Math.min((goal.saved / goal.target) * 100, 100);
   const remaining = goal.target - goal.saved;
-  
 
   // Se estiver carregando e ainda não tem dados, mostra loading
   if (
-    authLoading || (isLoading &&
-    total === 0 &&
-    monthData.income === 0 &&
-    monthData.expense === 0)
+    authLoading ||
+    (isLoading &&
+      total === 0 &&
+      monthData.income === 0 &&
+      monthData.expense === 0)
   ) {
     return (
       <div style={styles.container}>
         <div style={styles.loadingContainer}>
           <div style={styles.loadingSpinner}></div>
           <div style={styles.loadingText}>
-            {authLoading ? 'Verificando autenticação...' : 'Carregando seus dados...'}
+            {authLoading
+              ? "Verificando autenticação..."
+              : "Carregando seus dados..."}
           </div>
           {user && (
             <div style={styles.dataSourceIndicator}>
@@ -766,56 +1150,64 @@ const forceSync = async () => {
   }
 
   const debugFirestoreData = async () => {
-  if (!user?.uid) {
-    alert('Faça login primeiro');
-    return;
-  }
-  
-  try {
-    console.log('🔍 Debug detalhado do Firestore...');
-    
-    // 1. Ver transações do Firestore
-    const firestoreTransactions = await firebaseService.getUserTransactions(user.uid);
-    console.log('📊 Transações no Firestore:', firestoreTransactions);
-    
-    // 2. Ver transações locais
-    const today = new Date();
-    const localTransactions = await getTransactionsByFilter(
-      today.getMonth() + 1,
-      today.getFullYear()
-    );
-    console.log('💾 Transações locais:', localTransactions);
-    
-    // 3. Comparar
-    const localIds = localTransactions.map(tx => tx.id);
-    const firestoreIds = firestoreTransactions.map(tx => tx.id);
-    
-    console.log('🔍 Comparação:');
-    console.log('- IDs locais:', localIds);
-    console.log('- IDs Firestore:', firestoreIds);
-    
-    const missingInFirestore = localTransactions.filter(tx => 
-      tx.id && !firestoreIds.includes(tx.id)
-    );
-    const missingLocally = firestoreTransactions.filter(tx => 
-      tx.id && !localIds.includes(tx.id)
-    );
-    
-    console.log('📝 Faltando no Firestore:', missingInFirestore.length, 'transações');
-    console.log('📝 Faltando localmente:', missingLocally.length, 'transações');
-    
-    alert(`Resultado:\n
+    if (!user?.uid) {
+      alert("Faça login primeiro");
+      return;
+    }
+
+    try {
+      console.log("🔍 Debug detalhado do Firestore...");
+
+      // 1. Ver transações do Firestore
+      const firestoreTransactions = await firebaseService.getUserTransactions(
+        user.uid,
+      );
+      console.log("📊 Transações no Firestore:", firestoreTransactions);
+
+      // 2. Ver transações locais
+      const today = new Date();
+      const localTransactions = await getTransactionsByFilter(
+        today.getMonth() + 1,
+        today.getFullYear(),
+      );
+      console.log("💾 Transações locais:", localTransactions);
+
+      // 3. Comparar
+      const localIds = localTransactions.map((tx) => tx.id);
+      const firestoreIds = firestoreTransactions.map((tx) => tx.id);
+
+      console.log("🔍 Comparação:");
+      console.log("- IDs locais:", localIds);
+      console.log("- IDs Firestore:", firestoreIds);
+
+      const missingInFirestore = localTransactions.filter(
+        (tx) => tx.id && !firestoreIds.includes(tx.id),
+      );
+      const missingLocally = firestoreTransactions.filter(
+        (tx) => tx.id && !localIds.includes(tx.id),
+      );
+
+      console.log(
+        "📝 Faltando no Firestore:",
+        missingInFirestore.length,
+        "transações",
+      );
+      console.log(
+        "📝 Faltando localmente:",
+        missingLocally.length,
+        "transações",
+      );
+
+      alert(`Resultado:\n
 Firestore: ${firestoreTransactions.length} transações\n
 Local: ${localTransactions.length} transações\n
 Faltam no Firestore: ${missingInFirestore.length}\n
 Faltam localmente: ${missingLocally.length}`);
-    
-  } catch (error) {
-    console.error('❌ Erro no debug:', error);
-    alert(`Erro: ${error instanceof Error ? error.message : String(error)}`);
-  }
-};
-
+    } catch (error) {
+      console.error("❌ Erro no debug:", error);
+      alert(`Erro: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
 
   // CONTINUAÇÃO DO COMPONENTE...
   // Renderização do componente continua abaixo...
@@ -827,7 +1219,7 @@ Faltam localmente: ${missingLocally.length}`);
         <div style={styles.headerTop}>
           <div style={styles.headerLeft}>
             <h1 style={styles.title}>Finanças Pessoais</h1>
-            <h2>v1.16</h2>
+            <h2>v1.22</h2>
             <div style={styles.date}>
               {today
                 .toLocaleDateString("pt-BR", {
@@ -837,17 +1229,48 @@ Faltam localmente: ${missingLocally.length}`);
                 .replace(/^\w/, (c) => c.toUpperCase())}
             </div>
           </div>
- 
 
-          
+          {syncInProgress && (
+            <div
+              style={{
+                position: "fixed",
+                top: 10,
+                right: 10,
+                background: "rgba(59, 130, 246, 0.9)",
+                color: "white",
+                padding: "8px 12px",
+                borderRadius: "20px",
+                fontSize: "12px",
+                zIndex: 1000,
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <div
+                style={{
+                  width: "12px",
+                  height: "12px",
+                  borderRadius: "50%",
+                  background: "white",
+                  animation: "pulse 1.5s infinite",
+                }}
+              ></div>
+              Sincronizando...
+            </div>
+          )}
+
           <div style={styles.headerRight}>
-            <div style={{
-              ...styles.dataSourceBadge,
-              background: dataSource === 'firebase' 
-                ? 'linear-gradient(135deg, #10b981, #059669)' 
-                : 'linear-gradient(135deg, #6b7280, #4b5563)'
-            }}>
-              {dataSource === 'firebase' ? (
+            <div
+              style={{
+                ...styles.dataSourceBadge,
+                background:
+                  dataSource === "firebase"
+                    ? "linear-gradient(135deg, #10b981, #059669)"
+                    : "linear-gradient(135deg, #6b7280, #4b5563)",
+              }}
+            >
+              {dataSource === "firebase" ? (
                 <>
                   <Icons.Cloud /> Cloud
                 </>
@@ -856,98 +1279,84 @@ Faltam localmente: ${missingLocally.length}`);
                   <Icons.HardDrive /> Local
                 </>
               )}
-              
-              {lastSync && (
-                <div style={styles.syncTime}>
-                  {lastSync}
-                </div>
-              )}
+
+              {lastSync && <div style={styles.syncTime}>{lastSync}</div>}
             </div>
-            
-            <button 
+
+            {/* BOTÃO DE REFRESH */}
+            <button
               onClick={handleManualRefresh}
               style={styles.refreshButton}
               disabled={isLoading}
+              title="Atualizar dados"
             >
               <Icons.Refresh />
             </button>
+
+            {/* BOTÃO DE LOGOUT (APENAS SE ESTIVER LOGADO) */}
+            {user && (
+              <div
+                style={styles.navCard}
+                onClick={confirmLogout} // Mudar para confirmLogout
+                onKeyPress={(e) => e.key === "Enter" && confirmLogout()}
+                tabIndex={0}
+                role="button"
+              >
+                {/* ... resto permanece igual ... */}
+              </div>
+            )}
           </div>
+          
         </div>
 
         {user && (
           <div style={styles.userInfo}>
             <Icons.User />
-            <span style={{ fontWeight: '500', marginLeft: 8 }}>{user.email}</span>
+            <span style={{ fontWeight: "500", marginLeft: 8 }}>
+              {user.email}
+            </span>
             <div style={styles.userBadge}>
-              {user.emailVerified ? '✓ Verificado' : 'Não verificado'}
+              {user.emailVerified ? "✓ Verificado" : "Não verificado"}
             </div>
           </div>
         )}
+
+        {/* BOTÃO DE SYNC NO HEADER */}
+      <button
+        onClick={handleManualSync}
+        style={styles.refreshButton}
+        disabled={isSyncing}
+        title="Sincronizar com a nuvem"
+      >
+        {isSyncing ? <div style={styles.miniSpinner}></div> : <Icons.Cloud />}
+      </button>
+
       </div>
 
       {/* STATUS DE SINCRONIZAÇÃO */}
-{syncStatus && (
-  <div style={{
-    position: 'fixed',
-    top: '20px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    padding: '10px 20px',
-    background: syncStatus.success ? 'rgba(16, 185, 129, 0.9)' : 'rgba(239, 68, 68, 0.9)',
-    color: 'white',
-    borderRadius: '8px',
-    zIndex: 1000,
-    animation: 'fadeIn 0.3s ease'
-  }}>
-    {syncStatus.message}
-  </div>
-)}
+      {syncStatus && (
+        <div
+          style={{
+            position: "fixed",
+            top: "20px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            padding: "10px 20px",
+            background: syncStatus.success
+              ? "rgba(16, 185, 129, 0.9)"
+              : "rgba(239, 68, 68, 0.9)",
+            color: "white",
+            borderRadius: "8px",
+            zIndex: 1000,
+            animation: "fadeIn 0.3s ease",
+          }}
+        >
+          {syncStatus.message}
+        </div>
+      )}
 
-{/* BOTÃO DE SYNC NO HEADER */}
-<button 
-  onClick={handleManualSync}
-  style={styles.refreshButton}
-  disabled={isSyncing}
-  title="Sincronizar com a nuvem"
->
-  {isSyncing ? (
-    <div style={styles.miniSpinner}></div>
-  ) : (
-    <Icons.Cloud />
-  )}
-</button>
-
-{/* INFO BOX ATUALIZADA */}
-<div style={styles.infoBox}>
-  {user ? (
-    <>
-      <div style={styles.infoIcon}>{isSyncing ? '🔄' : '☁️'}</div>
-      <div>
-        <h4 style={styles.infoTitle}>
-          {isSyncing ? 'Sincronizando...' : 'Conectado à nuvem'}
-        </h4>
-        <p style={styles.infoText}>
-          {lastSync ? `Última sincronização: ${lastSync}` : 'Dados sincronizados na nuvem'}
-        </p>
-        {isSyncing && (
-          <div style={styles.syncProgress}>
-            <div style={styles.syncProgressBar}></div>
-          </div>
-        )}
-      </div>
-    </>
-  ) : (
-    <>
-      <div style={styles.infoIcon}>💾</div>
-      <div>
-        <h4 style={styles.infoTitle}>Dados salvos localmente</h4>
-        <p style={styles.infoText}>
-          Faça login para salvar na nuvem e acessar de qualquer lugar.
-        </p>
-      </div>
-    </>
-  )}
-</div>
+      
+      
 
       {/* SALDO CARD */}
       <div style={styles.card}>
@@ -1058,9 +1467,7 @@ Faltam localmente: ${missingLocally.length}`);
               Faltam R$ {remaining.toFixed(2)} para atingir a meta
             </div>
           ) : (
-            <div style={styles.completedText}>
-              🎉 Meta atingida! Parabéns!
-            </div>
+            <div style={styles.completedText}>🎉 Meta atingida! Parabéns!</div>
           )}
         </div>
 
@@ -1091,24 +1498,45 @@ Faltam localmente: ${missingLocally.length}`);
         </div>
       </div>
 
-      <button 
-  onClick={checkFirestoreData}
-  style={{
-    position: 'fixed',
-    bottom: '200px',
-    left: '20px',
-    padding: '10px 15px',
-    background: '#8b5cf6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '12px',
-    zIndex: 1000,
-    cursor: 'pointer'
-  }}
->
-  👁️ Ver Firestore
-</button>
+      <button
+        onClick={checkFirestoreData}
+        style={{
+          position: "fixed",
+          bottom: "200px",
+          left: "20px",
+          padding: "10px 15px",
+          background: "#8b5cf6",
+          color: "white",
+          border: "none",
+          borderRadius: "8px",
+          fontSize: "12px",
+          zIndex: 1000,
+          cursor: "not-allowed;", //pointer or not-allowed;
+          opacity: 0
+        }}
+      >
+        👁️ Ver Firestore
+      </button>
+
+      <button
+        onClick={forceFirestoreReset}
+        style={{
+          position: "fixed",
+          bottom: "280px",
+          left: "20px",
+          padding: "10px 15px",
+          background: "#ef4444",
+          color: "white",
+          border: "none",
+          borderRadius: "8px",
+          fontSize: "12px",
+          zIndex: 1000,
+          cursor: "not-allowed;", //pointer or not-allowed;
+          opacity: 0
+        }}
+      >
+        🔄 Reset Firestore
+      </button>
 
       {/* MENU DE NAVEGAÇÃO */}
       <div style={styles.navGrid}>
@@ -1167,6 +1595,32 @@ Faltam localmente: ${missingLocally.length}`);
             </div>
           </div>
         )}
+
+        {user && (
+          <div
+            style={styles.navCard}
+            onClick={handleLogout}
+            onKeyPress={(e) => e.key === "Enter" && handleLogout()}
+            tabIndex={0}
+            role="button"
+          >
+            <div
+              style={{
+                ...styles.navIcon,
+                background: "linear-gradient(135deg, #ef4444, #dc2626)",
+              }}
+            >
+              <Icons.Logout />
+            </div>
+            <div style={styles.navContent}>
+              <h4 style={styles.navTitle}>Sair da Conta</h4>
+              <p style={styles.navDescription}>Encerrar sessão atual</p>
+            </div>
+            <div style={styles.navArrow}>
+              <Icons.ArrowRight />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* INFO BOX */}
@@ -1177,7 +1631,8 @@ Faltam localmente: ${missingLocally.length}`);
             <div>
               <h4 style={styles.infoTitle}>Dados sincronizados na nuvem</h4>
               <p style={styles.infoText}>
-                Seus dados estão seguros no Firebase e disponíveis em qualquer dispositivo.
+                Seus dados estão seguros no Firebase e disponíveis em qualquer
+                dispositivo.
               </p>
             </div>
           </>
@@ -1193,6 +1648,60 @@ Faltam localmente: ${missingLocally.length}`);
             </div>
           </>
         )}
+      </div>
+
+      <div style={styles.container}>
+        {/* MODAL DE CONFIRMAÇÃO DE LOGOUT */}
+        {showLogoutModal && (
+          <div style={styles.modalOverlay}>
+            <div style={styles.modalContent}>
+              <div style={styles.modalHeader}>
+                <div style={styles.modalIcon}>🚪</div>
+                <h3 style={styles.modalTitle}>Sair da Conta</h3>
+              </div>
+
+              <div style={styles.modalBody}>
+                <p style={styles.modalText}>
+                  Tem certeza que deseja sair da sua conta?
+                </p>
+
+                <div style={styles.logoutInfo}>
+                  <div style={styles.infoItem}>
+                    <span style={styles.infoIcon}>✅</span>
+                    <span>Seus dados estão sincronizados na nuvem</span>
+                  </div>
+                  <div style={styles.infoItem}>
+                    <span style={styles.infoIcon}>✅</span>
+                    <span>Você poderá acessar de qualquer dispositivo</span>
+                  </div>
+                  <div style={styles.infoItem}>
+                    <span style={styles.infoIcon}>⚠️</span>
+                    <span>
+                      Dados não sincronizados serão perdidos localmente
+                    </span>
+                  </div>
+                </div>
+
+                <div style={styles.modalActions}>
+                  <button
+                    onClick={() => setShowLogoutModal(false)}
+                    style={styles.modalCancel}
+                    disabled={isLoading}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    style={styles.modalConfirm}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Saindo..." : "Sim, Sair"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}{" "}
       </div>
 
       {/* FLOATING ACTION BUTTON */}
@@ -1214,55 +1723,54 @@ Faltam localmente: ${missingLocally.length}`);
         <div style={styles.loadingOverlay}>
           <div style={styles.miniSpinner}></div>
           <div style={styles.loadingTextSmall}>
-            Atualizando {dataSource === 'firebase' ? 'da nuvem ☁️' : 'localmente 💾'}...
+            Atualizando{" "}
+            {dataSource === "firebase" ? "da nuvem ☁️" : "localmente 💾"}...
           </div>
         </div>
-        
       )}
 
-      <button 
-  onClick={debugFirestoreData}
-  style={{
-    position: 'fixed',
-    bottom: '240px',
-    left: '20px',
-    padding: '10px 15px',
-    background: '#3b82f6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '12px',
-    zIndex: 1000,
-    cursor: 'pointer'
-  }}
->
-  🔍 Debug Firestore
-</button>
+      <button
+        onClick={debugFirestoreData}
+        style={{
+          position: "fixed",
+          bottom: "240px",
+          left: "20px",
+          padding: "10px 15px",
+          background: "#3b82f6",
+          color: "white",
+          border: "none",
+          borderRadius: "8px",
+          fontSize: "12px",
+          zIndex: 1000,
+          cursor: "not-allowed;", //pointer or not-allowed;
+          opacity: 0
+        }}
+      >
+        🔍 Debug Firestore
+      </button>
 
-<button 
-  onClick={forceSync}
-  disabled={isSyncing}
-  style={{
-    position: 'fixed',
-    bottom: '280px',
-    left: '20px',
-    padding: '10px 15px',
-    background: isSyncing ? '#64748b' : '#10b981',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '12px',
-    zIndex: 1000,
-    cursor: isSyncing ? 'not-allowed' : 'pointer'
-  }}
->
-  {isSyncing ? '⏳ Sincronizando...' : '🚀 Forçar Sync'}
-</button>
-
+      <button
+        onClick={forceSync}
+        disabled={isSyncing}
+        style={{
+          position: "fixed",
+          bottom: "280px",
+          left: "20px",
+          padding: "10px 15px",
+          background: isSyncing ? "#64748b" : "#10b981",
+          color: "white",
+          border: "none",
+          borderRadius: "8px",
+          fontSize: "12px",
+          zIndex: 1000,
+          cursor: "not-allowed;", //pointer or not-allowed;
+          opacity: 0
+        }}
+      >
+        {isSyncing ? "⏳ Sincronizando..." : "🚀 Forçar Sync"}
+      </button>
     </div>
   );
-
-  
 }
 
 // Adicionando estilos de loading
@@ -1606,7 +2114,7 @@ const styles = {
 
   fab: {
     position: "fixed" as const,
-    bottom: "24px",
+    bottom: "100px",
     right: "24px",
     width: "56px",
     height: "56px",
@@ -1692,18 +2200,131 @@ const styles = {
   },
 
   syncProgress: {
-  marginTop: '8px',
-  height: '4px',
-  background: 'rgba(59, 130, 246, 0.2)',
-  borderRadius: '2px',
-  overflow: 'hidden'
-},
-syncProgressBar: {
-  height: '100%',
-  width: '100%',
-  background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
-  animation: 'progress 2s ease-in-out infinite',
-  borderRadius: '2px'
-},
-};
+    marginTop: "8px",
+    height: "4px",
+    background: "rgba(59, 130, 246, 0.2)",
+    borderRadius: "2px",
+    overflow: "hidden",
+  },
+  syncProgressBar: {
+    height: "100%",
+    width: "100%",
+    background: "linear-gradient(90deg, #3b82f6, #60a5fa)",
+    animation: "progress 2s ease-in-out infinite",
+    borderRadius: "2px",
+  },
 
+  logoutButton: {
+    width: 36,
+    height: 36,
+    borderRadius: "50%",
+    border: "none",
+    background: "linear-gradient(135deg, #ef4444, #dc2626)",
+    display: "flex" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    color: "#f8fafc",
+    boxShadow: "0 2px 8px rgba(239, 68, 68, 0.3)",
+  },
+
+  modalOverlay: {
+    position: "fixed" as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(15, 23, 42, 0.95)",
+    display: "flex" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    zIndex: 2000,
+    backdropFilter: "blur(4px)",
+  },
+
+  modalContent: {
+    background: "#1e293b",
+    borderRadius: "20px",
+    padding: "24px",
+    width: "90%",
+    maxWidth: "400px",
+    border: "1px solid #334155",
+    boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
+  },
+
+  modalHeader: {
+    display: "flex" as const,
+    alignItems: "center" as const,
+    marginBottom: "20px",
+  },
+
+  modalIcon: {
+    fontSize: "32px",
+    marginRight: "12px",
+  },
+
+  modalTitle: {
+    fontSize: "20px",
+    fontWeight: "600" as const,
+    color: "#f8fafc",
+    margin: 0,
+  },
+
+  modalBody: {
+    marginBottom: "20px",
+  },
+
+  modalText: {
+    color: "#cbd5e1",
+    fontSize: "15px",
+    lineHeight: "1.5",
+    marginBottom: "20px",
+  },
+
+  logoutInfo: {
+    background: "#0f172a",
+    borderRadius: "12px",
+    padding: "16px",
+    marginBottom: "24px",
+  },
+
+  infoItem: {
+    display: "flex" as const,
+    alignItems: "flex-start" as const,
+    marginBottom: "12px",
+    fontSize: "14px",
+    color: "#94a3b8",
+  },
+
+  modalActions: {
+    display: "flex" as const,
+    gap: "12px",
+  },
+
+  modalCancel: {
+    flex: 1,
+    padding: "12px",
+    border: "1px solid #334155",
+    background: "transparent",
+    color: "#94a3b8",
+    borderRadius: "10px",
+    fontSize: "15px",
+    fontWeight: "600" as const,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
+
+  modalConfirm: {
+    flex: 1,
+    padding: "12px",
+    border: "none",
+    background: "linear-gradient(135deg, #ef4444, #dc2626)",
+    color: "white",
+    borderRadius: "10px",
+    fontSize: "15px",
+    fontWeight: "600" as const,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
+};

@@ -145,7 +145,10 @@ export const getUserTransactions = async (userId: string): Promise<Transaction[]
         category: data.category,
         description: data.description,
         date: data.date,
-        createdAt: data.createdAt
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt, // ADICIONE ESTA LINHA
+  userId: data.userId // ADICIONE ESTA LINHA (opcional)
+
       });
     });
     

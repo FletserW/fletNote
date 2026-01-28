@@ -16,45 +16,49 @@ export type Transaction = {
   description: string;
   date: string; // ISO
   createdAt?: string;
+  updatedAt?: string;
 };
 
-// Função para gerar ID compatível com Firestore
-function generateFirestoreId(): string {
-  return `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
 
 /* ============================
    ADD TRANSACTION (HÍBRIDO CORRIGIDO)
 ============================ */
+// src/services/financeService.ts - ATUALIZE addTransaction
 export async function addTransaction(tx: Transaction): Promise<void> {
   try {
-    // Garantir que todos os valores sejam positivos
+    // Gerar ID compatível com Firestore
+    const txId = tx.id?.toString() || `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
     const transactionToSave = {
       ...tx,
-      id: tx.id || generateFirestoreId(), // Usar ID do Firestore
+      id: txId,
       amount: Math.abs(tx.amount),
-      createdAt: tx.createdAt || new Date().toISOString()
+      createdAt: tx.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString() // SEMPRE atualizar timestamp
     };
     
-    console.log('💾 Salvando transação (híbrido):', transactionToSave);
+    console.log('💾 Salvando transação (Firestore master)...');
     
-    // 1. Salvar localmente
+    // 1. Salvar localmente PRIMEIRO (feedback instantâneo)
     await saveTransactionToStorage(transactionToSave);
     console.log('✅ Transação salva localmente');
     
-    // 2. Tentar salvar no Firestore
+    // 2. Tentar salvar no Firestore IMEDIATAMENTE
     try {
       const user = firebaseService.getCurrentUser();
       if (user) {
-        console.log(`👤 Usuário logado: ${user.uid}`);
-        await firebaseService.addTransaction(transactionToSave, user.uid);
+        console.log(`👤 Enviando para Firestore: ${user.uid}`);
+        
+        // Adicionar userId para garantir consistência
+        const txWithUserId = { ...transactionToSave, userId: user.uid };
+        await firebaseService.addTransaction(txWithUserId, user.uid);
         console.log('✅ Transação enviada para Firestore');
       } else {
-        console.log('👤 Nenhum usuário logado, transação salva apenas localmente');
+        console.log('👤 Nenhum usuário logado, apenas local');
       }
     } catch (firestoreError) {
-      console.warn('⚠️ Transação não sincronizada com Firestore (modo offline):', firestoreError);
-      // Continua mesmo sem Firestore - modo offline
+      console.warn('⚠️ Firestore offline, será sincronizado depois:', firestoreError);
+      // Não lançar erro - modo offline OK
     }
     
   } catch (error) {
@@ -62,10 +66,10 @@ export async function addTransaction(tx: Transaction): Promise<void> {
     throw error;
   }
 }
-
 /* ============================
    GET TRANSACTIONS (HÍBRIDO)
 ============================ */
+// src/services/financeService.ts - ATUALIZE A FUNÇÃO getTransactionsByFilter
 export async function getTransactionsByFilter(
   month: number,
   year: number,
@@ -74,45 +78,85 @@ export async function getTransactionsByFilter(
   try {
     console.log(`Buscando transações para ${month}/${year}, categoria: ${category || 'todas'}`);
     
-    const allTransactions = await getTransactions();
+    // Verificar se há usuário logado no Firebase
+    const user = firebaseService.getCurrentUser();
+    let allTransactions: Transaction[] = [];
+    
+    if (user?.uid) {
+      console.log(`👤 Usuário logado: ${user.uid}, buscando do Firestore`);
+      
+      // 🔥 PRIMEIRO: Buscar do Firestore
+      const firestoreTransactions = await firebaseService.getUserTransactions(user.uid);
+      console.log(`📊 ${firestoreTransactions.length} transações do Firestore`);
+      
+      // 🔥 SEGUNDO: Buscar do localStorage (para compatibilidade)
+      const localTransactions = await getTransactions(user.uid); // Passa o userId
+      console.log(`💾 ${localTransactions.length} transações do localStorage`);
+      
+      // 🔥 COMBINAR: Juntar ambas as fontes, dando prioridade ao Firestore
+      const combinedTransactions = [...firestoreTransactions];
+      
+      // Adicionar transações locais que não estão no Firestore
+      localTransactions.forEach(localTx => {
+        if (!firestoreTransactions.some(remoteTx => remoteTx.id === localTx.id)) {
+          combinedTransactions.push(localTx);
+        }
+      });
+      
+      allTransactions = combinedTransactions;
+      console.log(`🔄 Total combinado: ${allTransactions.length} transações`);
+      
+      // 🔥 SINCRONIZAR: Se houver transações locais que não estão no Firestore
+      const localOnlyTransactions = localTransactions.filter(localTx => 
+        !firestoreTransactions.some(remoteTx => remoteTx.id === localTx.id)
+      );
+      
+      if (localOnlyTransactions.length > 0 && user.uid) {
+        console.log(`🔄 ${localOnlyTransactions.length} transações locais precisam ser sincronizadas`);
+        // Sincronizar em background
+        setTimeout(async () => {
+          try {
+            await firebaseService.syncTransactions(user.uid, localOnlyTransactions);
+            console.log('✅ Transações locais sincronizadas com Firestore');
+          } catch (error) {
+            console.warn('⚠️ Erro ao sincronizar transações:', error);
+          }
+        }, 1000);
+      }
+      
+    } else {
+      // Usuário não logado - apenas do localStorage
+      allTransactions = await getTransactions();
+      console.log(`👤 Nenhum usuário logado, usando localStorage: ${allTransactions.length} transações`);
+    }
     
     // Se não houver transações, retorna array vazio sem erro
-    if (!allTransactions) {
-      console.log('Nenhuma transação encontrada, retornando array vazio');
+    if (!allTransactions || allTransactions.length === 0) {
+      console.log('📭 Nenhuma transação encontrada');
       return [];
     }
     
     // Se não for um array, retorna vazio
     if (!Array.isArray(allTransactions)) {
-      console.warn('Transações não são um array válido:', typeof allTransactions);
+      console.warn('⚠️ Transações não são um array válido:', typeof allTransactions);
       return [];
     }
     
-    // Se array vazio, retorna vazio
-    if (allTransactions.length === 0) {
-      console.log('Array de transações está vazio');
-      return [];
-    }
-    
-    console.log(`Total de transações encontradas: ${allTransactions.length}`);
-    
+    // 🔥 FILTRAR POR MÊS/ANO E CATEGORIA
     const filtered = allTransactions.filter(tx => {
       try {
         // Valida transação
         if (!tx || typeof tx !== 'object') {
-          console.warn('Transação inválida:', tx);
           return false;
         }
         
         // Valida data
         if (!tx.date) {
-          console.warn('Transação sem data:', tx);
           return false;
         }
         
         const date = new Date(tx.date);
         if (isNaN(date.getTime())) {
-          console.warn('Data inválida na transação:', tx.date);
           return false;
         }
         
@@ -128,10 +172,6 @@ export async function getTransactionsByFilter(
         // Filtra por categoria se fornecida
         const categoryMatch = category ? tx.category === category : true;
         
-        if (dateMatch && categoryMatch) {
-          console.log(`Transação filtrada: ${tx.description} (${txMonth}/${txYear})`);
-        }
-        
         return dateMatch && categoryMatch;
       } catch (error) {
         console.error('Erro ao processar transação:', tx, error);
@@ -139,12 +179,17 @@ export async function getTransactionsByFilter(
       }
     });
     
-    console.log(`Transações filtradas: ${filtered.length}`);
-    return filtered;
+    console.log(`✅ ${filtered.length} transações filtradas para ${month}/${year}`);
+    
+    // 🔥 ORDENAR POR DATA (mais recente primeiro)
+    const sorted = filtered.sort((a, b) => {
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
+    
+    return sorted;
     
   } catch (error) {
-    console.error('Erro em getTransactionsByFilter:', error);
-    // Retorna array vazio em caso de erro
+    console.error('❌ Erro em getTransactionsByFilter:', error);
     return [];
   }
 }

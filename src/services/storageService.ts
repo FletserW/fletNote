@@ -9,6 +9,8 @@ export type Transaction = {
   description: string;
   date: string; // ISO
   createdAt?: string;
+  updatedAt?: string; // ADICIONE ESTA LINHA
+  userId?: string; // ADICIONE ESTA LINHA (opcional)
 };
 
 export type Goal = {
@@ -60,7 +62,54 @@ const setCurrentUserId = (userId: string): void => {
 
 
 
+export const saveAllTransactions = async (transactions: Transaction[], userId?: string): Promise<void> => {
+  try {
+    console.log(`💾 Salvando ${transactions.length} transações no localStorage...`);
+    
+    // Limpar possíveis duplicatas antes de salvar
+    const uniqueTransactions = removeDuplicatesById(transactions);
+    
+    const storageKey = userId 
+      ? `${STORAGE_KEYS.TRANSACTIONS}_${userId}`
+      : STORAGE_KEYS.TRANSACTIONS;
+    
+    localStorage.setItem(storageKey, JSON.stringify(uniqueTransactions));
+    console.log(`✅ ${uniqueTransactions.length} transações salvas (sem duplicatas)`);
+    
+    // Disparar evento de atualização
+    window.dispatchEvent(new CustomEvent('transactionsUpdated', {
+      detail: { count: uniqueTransactions.length, userId }
+    }));
+    
+  } catch (error) {
+    console.error('❌ Erro ao salvar todas as transações:', error);
+    throw error;
+  }
+};
 
+// Função auxiliar para remover duplicatas por ID
+const removeDuplicatesById = (transactions: Transaction[]): Transaction[] => {
+  const seenIds = new Set<string | number>();
+  const unique: Transaction[] = [];
+  
+  for (const tx of transactions) {
+    if (tx.id && !seenIds.has(tx.id)) {
+      seenIds.add(tx.id);
+      unique.push(tx);
+    } else if (!tx.id) {
+      // Transação sem ID - adicionar com ID gerado
+      const txWithId = { ...tx, id: generateId() };
+      unique.push(txWithId);
+    }
+  }
+  
+  const duplicatesRemoved = transactions.length - unique.length;
+  if (duplicatesRemoved > 0) {
+    console.log(`🧹 Removidas ${duplicatesRemoved} duplicatas por ID`);
+  }
+  
+  return unique;
+};
 
 
 // ============================
