@@ -17,3 +17,4 @@ export const DEFAULT_GOAL: Goal = {
   saved: 0,
   createdAt: new Date().toISOString()
 };
+

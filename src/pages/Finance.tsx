@@ -1,5 +1,5 @@
 // src/pages/Finance.tsx - ATUALIZE OS IMPORTS
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getTransactionsByFilter,
@@ -179,6 +179,65 @@ const Icons = {
       <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   ),
+  Edit: () => (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  ),
+  
+  Withdraw: () => (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="8" y1="12" x2="16" y2="12" />
+    </svg>
+  ),
+  
+  Save: () => (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+      <polyline points="17 21 17 13 7 13 7 21" />
+      <polyline points="7 3 7 8 15 8" />
+    </svg>
+  ),
+  
+  Cancel: () => (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="15" y1="9" x2="9" y2="15" />
+      <line x1="9" y1="9" x2="15" y2="15" />
+    </svg>
+  ),
+
+
 };
 
 export default function Finance() {
@@ -205,6 +264,16 @@ export default function Finance() {
     success: boolean;
     message: string;
   } | null>(null);
+
+   const [showEditGoalModal, setShowEditGoalModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<Goal>({
+    id: 1,
+    name: "Meta",
+    target: 5000,
+    saved: 0,
+    createdAt: new Date().toISOString(),
+  });
 
   const {
     isSyncing: syncInProgress,
@@ -942,7 +1011,7 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
   /* ============================
      ADD TO SAFE
   ============================ */
-  const addToSafe = useCallback(
+ const addToSafe = useCallback(
     async (amount: number) => {
       if (amount <= 0) {
         alert("Valor deve ser maior que zero");
@@ -973,15 +1042,26 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
         };
 
         setGoal(updatedGoal);
-        // Salva em segundo plano
+        
+        // Salva no localStorage
         await saveGoal(updatedGoal);
+        
+        // 🔥 NOVO: Salva no Firestore se estiver logado
+        if (user?.uid) {
+          try {
+            console.log('🔥 Salvando meta atualizada no Firestore...');
+            await firebaseService.syncGoal(user.uid, updatedGoal);
+            console.log('✅ Meta salva no Firestore');
+          } catch (firestoreError) {
+            console.warn('⚠️ Erro ao salvar meta no Firestore:', firestoreError);
+          }
+        }
 
         // Recarrega dados sem mostrar loading
         await loadAllData(false);
 
         // Sincronizar automaticamente se estiver logado
         if (user && !isSyncing) {
-          // Debounce para sincronização após alteração
           clearSyncTimeout();
           syncTimeoutRef.current = window.setTimeout(() => {
             safeSyncWithFirebase();
@@ -1008,6 +1088,213 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
       clearSyncTimeout,
     ],
   );
+
+  /* ============================
+     FUNÇÃO: EDITAR META
+  ============================ */
+  const openEditGoalModal = () => {
+    setEditingGoal({ ...goal });
+    setShowEditGoalModal(true);
+  };
+
+  const saveEditedGoal = async () => {
+    try {
+      if (!editingGoal.name.trim()) {
+        alert("Digite um nome para a meta");
+        return;
+      }
+
+      if (editingGoal.target <= 0) {
+        alert("O valor da meta deve ser maior que zero");
+        return;
+      }
+
+      if (editingGoal.saved > editingGoal.target) {
+        const confirmExceed = window.confirm(
+          `O valor guardado (R$ ${editingGoal.saved.toFixed(2)}) é maior que a nova meta (R$ ${editingGoal.target.toFixed(2)}).\n\nDeseja ajustar o valor guardado para o valor da meta?`
+        );
+        
+        if (confirmExceed) {
+          editingGoal.saved = editingGoal.target;
+        } else {
+          return;
+        }
+      }
+
+      setIsLoading(true);
+      
+      const updatedGoal = {
+        ...editingGoal,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Atualiza localmente
+      setGoal(updatedGoal);
+      await saveGoal(updatedGoal);
+      
+      // 🔥 Salva no Firestore se estiver logado
+      if (user?.uid) {
+        try {
+          console.log('🔥 Salvando meta editada no Firestore...');
+          await firebaseService.syncGoal(user.uid, updatedGoal);
+          console.log('✅ Meta editada salva no Firestore');
+        } catch (firestoreError) {
+          console.warn('⚠️ Erro ao salvar meta no Firestore:', firestoreError);
+        }
+      }
+
+      setShowEditGoalModal(false);
+      
+      // Recarrega dados
+      await loadAllData(false);
+      
+      // Sincroniza se estiver logado
+      if (user && !isSyncing) {
+        safeSyncWithFirebase();
+      }
+
+      alert("✅ Meta atualizada com sucesso!");
+    } catch (error) {
+      console.error("❌ Erro ao salvar meta:", error);
+      alert("Erro ao salvar meta. Tente novamente.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /* ============================
+     FUNÇÃO: RETIRAR VALOR DO COFRE
+  ============================ */
+  const openWithdrawModal = () => {
+    setShowWithdrawModal(true);
+  };
+
+  const withdrawFromSafe = async (amount: number) => {
+    try {
+      if (amount <= 0) {
+        alert("Valor deve ser maior que zero");
+        return;
+      }
+
+      if (amount > goal.saved) {
+        alert("Valor insuficiente no cofre para retirar esse valor");
+        return;
+      }
+
+      // Confirmação
+      const confirmWithdraw = window.confirm(
+        `Tem certeza que deseja retirar R$ ${amount.toFixed(2)} do cofre?\n\n` +
+        `Após a retirada:\n` +
+        `• Saldo no cofre: R$ ${(goal.saved - amount).toFixed(2)}\n` +
+        `• Saldo disponível: R$ ${(total + amount).toFixed(2)}`
+      );
+
+      if (!confirmWithdraw) return;
+
+      setIsLoading(true);
+
+      // Adiciona transação de retirada (como income)
+      await addTransaction({
+        type: "income",
+        amount: amount,
+        category: "Retirada do Cofre",
+        description: `Retirada do cofre: ${goal.name}`,
+        date: new Date().toISOString(),
+      });
+
+      // Atualiza meta
+      const updatedGoal = {
+        ...goal,
+        saved: Math.max(0, goal.saved - amount),
+        updatedAt: new Date().toISOString(),
+      };
+
+      setGoal(updatedGoal);
+      await saveGoal(updatedGoal);
+      
+      // 🔥 Salva no Firestore se estiver logado
+      if (user?.uid) {
+        try {
+          console.log('🔥 Salvando retirada no Firestore...');
+          await firebaseService.syncGoal(user.uid, updatedGoal);
+          console.log('✅ Retirada salva no Firestore');
+        } catch (firestoreError) {
+          console.warn('⚠️ Erro ao salvar retirada no Firestore:', firestoreError);
+        }
+      }
+
+      setShowWithdrawModal(false);
+
+      // Recarrega dados
+      await loadAllData(false);
+
+      // Sincroniza se estiver logado
+      if (user && !isSyncing) {
+        safeSyncWithFirebase();
+      }
+
+      alert(`✅ R$ ${amount.toFixed(2)} retirado do cofre com sucesso!`);
+    } catch (error) {
+      console.error("❌ Erro ao retirar do cofre:", error);
+      alert("Erro ao retirar valor do cofre. Tente novamente.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /* ============================
+     FUNÇÃO: EXCLUIR META
+  ============================ */
+  const resetGoal = async () => {
+    const confirmReset = window.confirm(
+      "Tem certeza que deseja resetar sua meta?\n\n" +
+      "• O valor guardado será zerado\n" +
+      "• Você pode manter o nome e valor da meta\n" +
+      "• Esta ação não pode ser desfeita"
+    );
+
+    if (!confirmReset) return;
+
+    try {
+      setIsLoading(true);
+
+      const resetGoal = {
+        ...goal,
+        saved: 0,
+        updatedAt: new Date().toISOString(),
+      };
+
+      setGoal(resetGoal);
+      await saveGoal(resetGoal);
+      
+      // 🔥 Salva no Firestore se estiver logado
+      if (user?.uid) {
+        try {
+          console.log('🔥 Salvando meta resetada no Firestore...');
+          await firebaseService.syncGoal(user.uid, resetGoal);
+          console.log('✅ Meta resetada salva no Firestore');
+        } catch (firestoreError) {
+          console.warn('⚠️ Erro ao salvar meta no Firestore:', firestoreError);
+        }
+      }
+
+      // Recarrega dados
+      await loadAllData(false);
+
+      // Sincroniza se estiver logado
+      if (user && !isSyncing) {
+        safeSyncWithFirebase();
+      }
+
+      alert("✅ Meta resetada com sucesso!");
+    } catch (error) {
+      console.error("❌ Erro ao resetar meta:", error);
+      alert("Erro ao resetar meta. Tente novamente.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   // No Finance.tsx, adicione:
   const forceSync = async () => {
@@ -1409,7 +1696,7 @@ Faltam localmente: ${missingLocally.length}`);
         </div>
       </div>
 
-      {/* COFRE CARD */}
+      {/* COFRE CARD - ATUALIZADO COM NOVOS BOTÕES */}
       <div style={styles.card}>
         <div style={styles.cardHeader}>
           <div
@@ -1420,11 +1707,50 @@ Faltam localmente: ${missingLocally.length}`);
           >
             <Icons.PiggyBank />
           </div>
-          <div>
-            <h3 style={styles.cardTitle}>Meu Cofre</h3>
-            <div style={styles.cardSubtitle}>{goal.name}</div>
+          <div style={styles.goalHeaderContent}>
+            <div>
+              <h3 style={styles.cardTitle}>Meu Cofre</h3>
+              <div style={styles.cardSubtitle}>{goal.name}</div>
+            </div>
+            <div style={styles.goalActions}>
+              {/* BOTÃO EDITAR META */}
+              <button
+                onClick={openEditGoalModal}
+                style={styles.iconButton}
+                title="Editar meta"
+              >
+                <Icons.Edit />
+              </button>
+              
+              {/* BOTÃO RETIRAR */}
+              {goal.saved > 0 && (
+                <button
+                  onClick={openWithdrawModal}
+                  style={{
+                    ...styles.iconButton,
+                    background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                  }}
+                  title="Retirar do cofre"
+                >
+                  <Icons.Withdraw />
+                </button>
+              )}
+              
+              {/* BOTÃO RESETAR */}
+              <button
+                onClick={resetGoal}
+                style={{
+                  ...styles.iconButton,
+                  background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                }}
+                title="Resetar meta"
+              >
+                <Icons.Cancel />
+              </button>
+            </div>
           </div>
         </div>
+
 
         {/* PROGRESSO */}
         <div style={styles.progressSection}>
@@ -1471,9 +1797,29 @@ Faltam localmente: ${missingLocally.length}`);
           )}
         </div>
 
-        {/* BOTÕES RÁPIDOS */}
+        {/* BOTÕES RÁPIDOS - ATUALIZADO COM OPÇÃO PERSONALIZADA */}
         <div style={styles.quickActions}>
-          <div style={styles.quickActionsLabel}>Adicionar valor:</div>
+          <div style={styles.quickActionsHeader}>
+            <div style={styles.quickActionsLabel}>Adicionar valor:</div>
+            <button
+              onClick={() => {
+                const customAmount = prompt("Digite o valor para adicionar ao cofre:");
+                if (customAmount) {
+                  const amount = parseFloat(customAmount.replace(',', '.'));
+                  if (!isNaN(amount) && amount > 0) {
+                    addToSafe(amount);
+                  } else {
+                    alert("Valor inválido. Digite um número positivo.");
+                  }
+                }
+              }}
+              style={styles.customAmountButton}
+              title="Adicionar valor personalizado"
+            >
+              + Valor personalizado
+            </button>
+          </div>
+          
           <div style={styles.quickActionsGrid}>
             {[10, 50, 100, 500, 1000, 5000].map((value) => (
               <button
@@ -1497,6 +1843,176 @@ Faltam localmente: ${missingLocally.length}`);
           </div>
         </div>
       </div>
+
+      {/* MODAL EDITAR META */}
+      {showEditGoalModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalHeader}>
+              <div style={styles.modalIcon}>✏️</div>
+              <h3 style={styles.modalTitle}>Editar Meta</h3>
+            </div>
+            
+            <div style={styles.modalBody}>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Nome da Meta</label>
+                <input
+                  type="text"
+                  value={editingGoal.name}
+                  onChange={(e) => setEditingGoal({...editingGoal, name: e.target.value})}
+                  style={styles.formInput}
+                  placeholder="Ex: PC Gamer, Viagem, Carro..."
+                />
+              </div>
+              
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Valor da Meta (R$)</label>
+                <input
+                  type="number"
+                  value={editingGoal.target}
+                  onChange={(e) => setEditingGoal({...editingGoal, target: parseFloat(e.target.value) || 0})}
+                  style={styles.formInput}
+                  min="1"
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </div>
+              
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Valor Atual Guardado (R$)</label>
+                <input
+                  type="number"
+                  value={editingGoal.saved}
+                  onChange={(e) => setEditingGoal({...editingGoal, saved: parseFloat(e.target.value) || 0})}
+                  style={styles.formInput}
+                  min="0"
+                  max={editingGoal.target}
+                  step="0.01"
+                  placeholder="0.00"
+                />
+                <div style={styles.formHelp}>
+                  Máximo: R$ {editingGoal.target.toFixed(2)}
+                </div>
+              </div>
+              
+              <div style={styles.modalActions}>
+                <button
+                  onClick={() => setShowEditGoalModal(false)}
+                  style={styles.modalCancel}
+                  disabled={isLoading}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={saveEditedGoal}
+                  style={styles.modalConfirm}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL RETIRAR DO COFRE */}
+      {showWithdrawModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalHeader}>
+              <div style={styles.modalIcon}>💰</div>
+              <h3 style={styles.modalTitle}>Retirar do Cofre</h3>
+            </div>
+            
+            <div style={styles.modalBody}>
+              <div style={styles.withdrawInfo}>
+                <div style={styles.withdrawInfoItem}>
+                  <span>Saldo no cofre:</span>
+                  <span style={styles.withdrawAmount}>R$ {goal.saved.toFixed(2)}</span>
+                </div>
+                <div style={styles.withdrawInfoItem}>
+                  <span>Saldo disponível:</span>
+                  <span style={styles.withdrawAmount}>R$ {total.toFixed(2)}</span>
+                </div>
+              </div>
+              
+              <div style={styles.withdrawQuickValues}>
+                <div style={styles.withdrawQuickLabel}>Valores rápidos:</div>
+                <div style={styles.withdrawQuickGrid}>
+                  {[50, 100, 200, 500, 1000].map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => withdrawFromSafe(value)}
+                      style={{
+                        ...styles.withdrawQuickButton,
+                        background: value <= goal.saved
+                          ? "linear-gradient(135deg, #f59e0b, #d97706)"
+                          : "#94a3b8",
+                        cursor: value <= goal.saved ? "pointer" : "not-allowed",
+                        opacity: value <= goal.saved ? 1 : 0.6,
+                      }}
+                      disabled={value > goal.saved}
+                    >
+                      R$ {value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Valor personalizado (R$)</label>
+                <div style={styles.withdrawCustom}>
+                  <input
+                    type="number"
+                    id="customWithdrawAmount"
+                    style={styles.formInput}
+                    min="1"
+                    max={goal.saved}
+                    step="0.01"
+                    placeholder="Digite o valor"
+                  />
+                  <button
+                    onClick={() => {
+                      const input = document.getElementById('customWithdrawAmount') as HTMLInputElement;
+                      const amount = parseFloat(input.value.replace(',', '.'));
+                      if (!isNaN(amount) && amount > 0 && amount <= goal.saved) {
+                        withdrawFromSafe(amount);
+                      } else {
+                        alert(`Valor inválido. Digite um valor entre R$ 0,01 e R$ ${goal.saved.toFixed(2)}`);
+                      }
+                    }}
+                    style={styles.withdrawCustomButton}
+                  >
+                    Retirar
+                  </button>
+                </div>
+              </div>
+              
+              <div style={styles.modalActions}>
+                <button
+                  onClick={() => setShowWithdrawModal(false)}
+                  style={styles.modalCancel}
+                  disabled={isLoading}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => withdrawFromSafe(goal.saved)}
+                  style={{
+                    ...styles.modalConfirm,
+                    background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                  }}
+                  disabled={isLoading || goal.saved <= 0}
+                >
+                  {isLoading ? 'Processando...' : 'Retirar Tudo'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       <button
         onClick={checkFirestoreData}
@@ -2326,5 +2842,145 @@ const styles = {
     fontWeight: "600" as const,
     cursor: "pointer",
     transition: "all 0.2s ease",
+  },
+
+  goalHeaderContent: {
+    display: 'flex' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    flex: 1,
+  },
+
+  goalActions: {
+    display: 'flex' as const,
+    gap: '8px',
+  },
+
+  iconButton: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '50%',
+    border: 'none',
+    background: 'linear-gradient(135deg, #6b7280, #4b5563)',
+    color: 'white',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  },
+
+  quickActionsHeader: {
+    display: 'flex' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    marginBottom: '12px',
+  },
+
+  customAmountButton: {
+    padding: '8px 12px',
+    background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '12px',
+    fontWeight: '600' as const,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  },
+
+  formGroup: {
+    marginBottom: '16px',
+  },
+
+  formLabel: {
+    display: 'block' as const,
+    fontSize: '14px',
+    fontWeight: '600' as const,
+    color: '#f8fafc',
+    marginBottom: '8px',
+  },
+
+  formInput: {
+    width: '100%',
+    padding: '12px',
+    background: '#0f172a',
+    border: '1px solid #334155',
+    borderRadius: '8px',
+    color: '#f8fafc',
+    fontSize: '15px',
+  },
+
+  formHelp: {
+    fontSize: '12px',
+    color: '#94a3b8',
+    marginTop: '4px',
+  },
+
+  withdrawInfo: {
+    background: '#0f172a',
+    borderRadius: '12px',
+    padding: '16px',
+    marginBottom: '20px',
+  },
+
+  withdrawInfoItem: {
+    display: 'flex' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    marginBottom: '8px',
+    fontSize: '14px',
+    color: '#cbd5e1',
+  },
+
+  withdrawAmount: {
+    fontSize: '16px',
+    fontWeight: '600' as const,
+    color: '#10b981',
+  },
+
+  withdrawQuickValues: {
+    marginBottom: '20px',
+  },
+
+  withdrawQuickLabel: {
+    fontSize: '14px',
+    fontWeight: '600' as const,
+    color: '#f8fafc',
+    marginBottom: '12px',
+  },
+
+  withdrawQuickGrid: {
+    display: 'grid' as const,
+    gridTemplateColumns: 'repeat(5, 1fr)',
+    gap: '8px',
+  },
+
+  withdrawQuickButton: {
+    padding: '10px 8px',
+    border: 'none',
+    borderRadius: '8px',
+    color: 'white',
+    fontSize: '13px',
+    fontWeight: '600' as const,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  },
+
+  withdrawCustom: {
+    display: 'flex' as const,
+    gap: '8px',
+  },
+
+  withdrawCustomButton: {
+    padding: '12px 16px',
+    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '600' as const,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap' as const,
   },
 };

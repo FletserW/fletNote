@@ -3,8 +3,20 @@ import { getTransactionsByFilter, calculateSummary } from '../services/financeSe
 import type { Transaction } from '../types/Transaction'
 import { useNavigate } from 'react-router-dom'
 
-// Ícones
+
+// Ícones (adicionar ícone de calendário para datas)
 const Icons = {
+  // ... outros ícones permanecem iguais ...
+  
+  CalendarDay: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+      <text x="12" y="17" textAnchor="middle" fontSize="6" fill="currentColor">DD</text>
+    </svg>
+  ),
   ArrowLeft: () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <polyline points="15 18 9 12 15 6" />
@@ -53,11 +65,6 @@ const Icons = {
   )
 }
 
-const categories = [
-  'Todos',
-  'Jogos', 'Comida', 'Roupa', 'Cabelo', 'Salario',
-  'Lazer', 'Computador', 'Pink', 'Mãe', 'Cofre', 'Outros'
-]
 
 export default function Statement() {
   const navigate = useNavigate()
@@ -68,7 +75,76 @@ export default function Statement() {
   const [category, setCategory] = useState('Todos')
   const [search, setSearch] = useState('')
   const [items, setItems] = useState<Transaction[]>([])
+  const [groupedItems, setGroupedItems] = useState<Record<string, Transaction[]>>({})
   const [isLoading, setIsLoading] = useState(false)
+
+  // Função para formatar data para chave de agrupamento (YYYY-MM-DD)
+  const getDateKey = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toISOString().split('T')[0] // Retorna YYYY-MM-DD
+  }
+
+  // Função para formatar data para exibição
+  const formatDateDisplay = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    }).replace(/^\w/, c => c.toUpperCase())
+  }
+
+  // Função para formatar data curta (usada no header do grupo)
+  const formatShortDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    
+    const isToday = date.toDateString() === today.toDateString()
+    const isYesterday = date.toDateString() === yesterday.toDateString()
+    
+    if (isToday) return 'Hoje'
+    if (isYesterday) return 'Ontem'
+    
+    return date.toLocaleDateString('pt-BR', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short'
+    }).replace(/^\w/, c => c.toUpperCase())
+  }
+
+  // Função para calcular total do dia
+  /*const calculateDayTotal = (transactions: Transaction[]) => {
+    return transactions.reduce((total, tx) => {
+      return tx.type === 'income' ? total + tx.amount : total - tx.amount
+    }, 0)
+  }*/
+
+  // Agrupar transações por data
+  const groupTransactionsByDate = (transactions: Transaction[]) => {
+    const grouped: Record<string, Transaction[]> = {}
+    
+    transactions.forEach(transaction => {
+      const dateKey = getDateKey(transaction.date)
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = []
+      }
+      grouped[dateKey].push(transaction)
+    })
+    
+    // Ordenar por data (mais recente primeiro)
+    return Object.keys(grouped)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+      .reduce((sorted, dateKey) => {
+        // Ordenar transações dentro do dia (mais recente primeiro)
+        sorted[dateKey] = grouped[dateKey].sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        )
+        return sorted
+      }, {} as Record<string, Transaction[]>)
+  }
 
   // Carregar transações
   const loadTransactions = useCallback(async () => {
@@ -80,6 +156,7 @@ export default function Statement() {
         category === 'Todos' ? undefined : category
       )
       setItems(data)
+      setGroupedItems(groupTransactionsByDate(data))
     } catch (error) {
       console.error('Erro ao carregar transações:', error)
     } finally {
@@ -95,25 +172,56 @@ export default function Statement() {
   const summary = calculateSummary(items)
 
   // Filtrar por busca
-  const filteredItems = items.filter(item => 
-    item.description.toLowerCase().includes(search.toLowerCase()) ||
-    item.category.toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredGroupedItems = Object.keys(groupedItems).reduce((filtered, dateKey) => {
+    const dayTransactions = groupedItems[dateKey]
+    const filteredDayTransactions = dayTransactions.filter(item => 
+      item.description.toLowerCase().includes(search.toLowerCase()) ||
+      item.category.toLowerCase().includes(search.toLowerCase())
+    )
+    
+    if (filteredDayTransactions.length > 0) {
+      filtered[dateKey] = filteredDayTransactions
+    }
+    
+    return filtered
+  }, {} as Record<string, Transaction[]>)
 
-  // Formatar data
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    })
+  // Calcular totais de dias para exibição
+  const getDayTotals = (transactions: Transaction[]) => {
+    const income = transactions
+      .filter(tx => tx.type === 'income')
+      .reduce((sum, tx) => sum + tx.amount, 0)
+    
+    const expense = transactions
+      .filter(tx => tx.type === 'expense')
+      .reduce((sum, tx) => sum + tx.amount, 0)
+    
+    const total = income - expense
+    
+    return { income, expense, total }
   }
 
   // Nome do mês
   const monthName = new Date(year, month - 1).toLocaleDateString('pt-BR', {
     month: 'long'
   }).replace(/^\w/, c => c.toUpperCase())
+
+  const categories = [
+  'Todos',
+  'Jogos', 
+  'Comida', 
+  'Roupa', 
+  'Cabelo', 
+  'Salario',
+  'Lazer', 
+  'Computador', 
+  'Pink', 
+  'Mãe', 
+  'Cofre', 
+  'Outros',
+  'Retirada do Cofre', // Adicionada para transações de retirada
+  'Teste' // Para testes
+]
 
   return (
     <div style={styles.container}>
@@ -243,18 +351,18 @@ export default function Statement() {
 
         {/* CONTADOR DE RESULTADOS */}
         <div style={styles.resultsCount}>
-          {filteredItems.length} {filteredItems.length === 1 ? 'transação encontrada' : 'transações encontradas'}
+          {Object.keys(filteredGroupedItems).length} {Object.keys(filteredGroupedItems).length === 1 ? 'dia com' : 'dias com'} {items.length} {items.length === 1 ? 'transação' : 'transações'}
         </div>
       </div>
 
-      {/* LISTA DE TRANSAÇÕES */}
+      {/* LISTA DE TRANSAÇÕES AGRUPADAS POR DATA */}
       <div style={styles.transactionsContainer}>
         {isLoading ? (
           <div style={styles.loadingContainer}>
             <div style={styles.loadingSpinner}></div>
             <div style={styles.loadingText}>Carregando transações...</div>
           </div>
-        ) : filteredItems.length === 0 ? (
+        ) : Object.keys(filteredGroupedItems).length === 0 ? (
           <div style={styles.emptyState}>
             <Icons.Empty />
             <h3 style={styles.emptyTitle}>Nenhuma transação encontrada</h3>
@@ -273,73 +381,126 @@ export default function Statement() {
             )}
           </div>
         ) : (
-          filteredItems.map(item => (
-            <div 
-              key={item.id} 
-              style={{
-                ...styles.transactionCard,
-                borderLeft: `4px solid ${item.type === 'income' ? '#10b981' : '#ef4444'}`
-              }}
-            >
-              <div style={styles.transactionHeader}>
-                <div style={styles.transactionTypeIcon}>
-                  {item.type === 'income' ? (
-                    <div style={styles.incomeIcon}>
-                      <Icons.Income />
+          Object.keys(filteredGroupedItems).map(dateKey => {
+            const dayTransactions = filteredGroupedItems[dateKey]
+            const dayTotals = getDayTotals(dayTransactions)
+            
+            return (
+              <div key={dateKey} style={styles.dayGroup}>
+                {/* HEADER DO DIA */}
+                <div style={styles.dayHeader}>
+                  <div style={styles.dayHeaderLeft}>
+                    <div style={styles.dayIcon}>
+                      <Icons.CalendarDay />
                     </div>
-                  ) : (
-                    <div style={styles.expenseIcon}>
-                      <Icons.Expense />
+                    <div>
+                      <div style={styles.dayShortDate}>
+                        {formatShortDate(dateKey)}
+                      </div>
+                      <div style={styles.dayFullDate}>
+                        {formatDateDisplay(dateKey)}
+                      </div>
                     </div>
-                  )}
-                </div>
-                <div style={styles.transactionMain}>
-                  <div style={styles.transactionCategory}>
-                    {item.category}
                   </div>
-                  <div style={styles.transactionDescription}>
-                    {item.description || 'Sem descrição'}
+                  <div style={styles.dayTotal}>
+                    <span style={{
+                      color: dayTotals.total >= 0 ? '#10b981' : '#ef4444',
+                      fontWeight: '600',
+                      fontSize: '14px'
+                    }}>
+                      {dayTotals.total >= 0 ? '+' : ''}R$ {dayTotals.total.toFixed(2)}
+                    </span>
                   </div>
                 </div>
-                <div style={styles.transactionAmount}>
-                  <span style={{
-                    color: item.type === 'income' ? '#10b981' : '#ef4444',
-                    fontWeight: '700',
-                    fontSize: '16px'
-                  }}>
-                    {item.type === 'income' ? '+' : '-'} R$ {item.amount.toFixed(2)}
-                  </span>
+                
+                {/* RESUMO DO DIA */}
+                <div style={styles.daySummary}>
+                  <div style={styles.daySummaryItem}>
+                    <span style={styles.daySummaryLabel}>Entradas:</span>
+                    <span style={styles.daySummaryIncome}>+R$ {dayTotals.income.toFixed(2)}</span>
+                  </div>
+                  <div style={styles.daySummaryItem}>
+                    <span style={styles.daySummaryLabel}>Saídas:</span>
+                    <span style={styles.daySummaryExpense}>-R$ {dayTotals.expense.toFixed(2)}</span>
+                  </div>
+                </div>
+                
+                {/* LISTA DE TRANSAÇÕES DO DIA */}
+                <div style={styles.dayTransactions}>
+                  {dayTransactions.map(item => (
+                    <div 
+                      key={item.id} 
+                      style={{
+                        ...styles.transactionCard,
+                        borderLeft: `4px solid ${item.type === 'income' ? '#10b981' : '#ef4444'}`
+                      }}
+                    >
+                      <div style={styles.transactionHeader}>
+                        <div style={styles.transactionTypeIcon}>
+                          {item.type === 'income' ? (
+                            <div style={styles.incomeIcon}>
+                              <Icons.Income />
+                            </div>
+                          ) : (
+                            <div style={styles.expenseIcon}>
+                              <Icons.Expense />
+                            </div>
+                          )}
+                        </div>
+                        <div style={styles.transactionMain}>
+                          <div style={styles.transactionCategory}>
+                            {item.category}
+                          </div>
+                          <div style={styles.transactionDescription}>
+                            {item.description || 'Sem descrição'}
+                          </div>
+                        </div>
+                        <div style={styles.transactionAmount}>
+                          <span style={{
+                            color: item.type === 'income' ? '#10b981' : '#ef4444',
+                            fontWeight: '700',
+                            fontSize: '16px'
+                          }}>
+                            {item.type === 'income' ? '+' : '-'} R$ {item.amount.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div style={styles.transactionFooter}>
+                        <div style={styles.transactionTime}>
+                          {new Date(item.date).toLocaleTimeString('pt-BR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
+                        <div style={styles.transactionTypeBadge}>
+                          <span style={{
+                            background: item.type === 'income' 
+                              ? 'rgba(16, 185, 129, 0.1)' 
+                              : 'rgba(239, 68, 68, 0.1)',
+                            color: item.type === 'income' ? '#10b981' : '#ef4444',
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: '600'
+                          }}>
+                            {item.type === 'income' ? 'ENTRADA' : 'SAÍDA'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-              
-              <div style={styles.transactionFooter}>
-                <div style={styles.transactionDate}>
-                  {formatDate(item.date)}
-                </div>
-                <div style={styles.transactionTypeBadge}>
-                  <span style={{
-                    background: item.type === 'income' 
-                      ? 'rgba(16, 185, 129, 0.1)' 
-                      : 'rgba(239, 68, 68, 0.1)',
-                    color: item.type === 'income' ? '#10b981' : '#ef4444',
-                    padding: '4px 12px',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                    fontWeight: '600'
-                  }}>
-                    {item.type === 'income' ? 'ENTRADA' : 'SAÍDA'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
     </div>
   )
 }
 
-// Estilos
+// Estilos atualizados
 const styles = {
   container: {
     padding: '20px 16px',
@@ -589,11 +750,102 @@ const styles = {
     transition: 'all 0.2s ease'
   },
   
-  transactionCard: {
+  // NOVOS ESTILOS PARA AGRUPAMENTO POR DATA
+  dayGroup: {
+    marginBottom: '24px',
     background: '#1e293b',
-    borderRadius: '16px',
-    padding: '16px',
-    marginBottom: '12px',
+    borderRadius: '20px',
+    overflow: 'hidden',
+    border: '1px solid #334155',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.2)'
+  },
+  
+  dayHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '16px 20px',
+    background: 'rgba(30, 41, 59, 0.8)',
+    borderBottom: '1px solid #334155'
+  },
+  
+  dayHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px'
+  },
+  
+  dayIcon: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '10px',
+    background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'white'
+  },
+  
+  dayShortDate: {
+    fontSize: '16px',
+    fontWeight: '700',
+    color: '#f8fafc'
+  },
+  
+  dayFullDate: {
+    fontSize: '12px',
+    color: '#94a3b8',
+    marginTop: '2px'
+  },
+  
+  dayTotal: {
+    fontSize: '16px',
+    fontWeight: '700'
+  },
+  
+  daySummary: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '12px 20px',
+    background: 'rgba(15, 23, 42, 0.5)',
+    borderBottom: '1px solid #334155'
+  },
+  
+  daySummaryItem: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: '4px'
+  },
+  
+  daySummaryLabel: {
+    fontSize: '11px',
+    color: '#94a3b8',
+    fontWeight: '600',
+    textTransform: 'uppercase' as const
+  },
+  
+  daySummaryIncome: {
+    fontSize: '13px',
+    color: '#10b981',
+    fontWeight: '700'
+  },
+  
+  daySummaryExpense: {
+    fontSize: '13px',
+    color: '#ef4444',
+    fontWeight: '700'
+  },
+  
+  dayTransactions: {
+    padding: '12px'
+  },
+  
+  transactionCard: {
+    background: 'rgba(15, 23, 42, 0.5)',
+    borderRadius: '12px',
+    padding: '12px',
+    marginBottom: '8px',
     border: '1px solid #334155',
     transition: 'all 0.2s ease'
   },
@@ -601,7 +853,7 @@ const styles = {
   transactionHeader: {
     display: 'flex',
     alignItems: 'center',
-    marginBottom: '12px'
+    marginBottom: '8px'
   },
   
   transactionTypeIcon: {
@@ -609,9 +861,9 @@ const styles = {
   },
   
   incomeIcon: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '10px',
+    width: '32px',
+    height: '32px',
+    borderRadius: '8px',
     background: 'rgba(16, 185, 129, 0.1)',
     display: 'flex',
     alignItems: 'center',
@@ -620,9 +872,9 @@ const styles = {
   },
   
   expenseIcon: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '10px',
+    width: '32px',
+    height: '32px',
+    borderRadius: '8px',
     background: 'rgba(239, 68, 68, 0.1)',
     display: 'flex',
     alignItems: 'center',
@@ -635,19 +887,19 @@ const styles = {
   },
   
   transactionCategory: {
-    fontSize: '16px',
+    fontSize: '14px',
     fontWeight: '600',
     color: '#f8fafc',
-    marginBottom: '4px'
+    marginBottom: '2px'
   },
   
   transactionDescription: {
-    fontSize: '14px',
+    fontSize: '12px',
     color: '#94a3b8'
   },
   
   transactionAmount: {
-    fontSize: '16px',
+    fontSize: '14px',
     fontWeight: '700'
   },
   
@@ -655,13 +907,14 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: '12px',
-    borderTop: '1px solid #334155'
+    paddingTop: '8px',
+    borderTop: '1px solid rgba(51, 65, 85, 0.3)'
   },
   
-  transactionDate: {
-    fontSize: '12px',
-    color: '#64748b'
+  transactionTime: {
+    fontSize: '11px',
+    color: '#64748b',
+    fontFamily: 'monospace'
   },
   
   transactionTypeBadge: {
