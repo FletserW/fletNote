@@ -1,16 +1,13 @@
-import { useState,  } from 'react'
-import {
-  getMonthDays,
-  isSundayOff,
-  isWednesday
-} from '../services/dayOffService'
-import {
-  addExtraDayOff,
-  isExtraDayOff,
-  removeExtraDayOff,
 
-} from '../services/manualDayOffService'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react';
+import { getMonthDays } from '../services/dayOffService';
+import { DayOffConfigService } from '../services/dayOffConfigService';
+import { useAuth } from '../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
+import { collection, getDocs } from 'firebase/firestore';
+import { getFirestoreDb } from '../services/firebase';
+// No topo do DayOffCalendar.tsx, adicione:
+import { COLLECTIONS, LOCAL_STORAGE_KEYS } from '../services/dayOffConfigService';
 
 // Ícones
 const Icons = {
@@ -73,65 +70,259 @@ const Icons = {
       <line x1="12" y1="20" x2="12" y2="4" />
       <line x1="6" y1="20" x2="6" y2="14" />
     </svg>
+  ),
+  Settings: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
   )
-}
+};
 
-const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const monthNames = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-]
+];
 
 export default function DayOffCalendar() {
-  const navigate = useNavigate()
-  const today = new Date()
-  const [month, setMonth] = useState(today.getMonth())
-  const [year, setYear] = useState(today.getFullYear())
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const today = new Date();
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [configService, setConfigService] = useState<DayOffConfigService | null>(null);
+  const [dayOffStats, setDayOffStats] = useState({
+    fixedDaysOff: 0,
+    regularDaysOff: 0,
+    extraDaysOff: 0,
+    totalDaysOff: 0,
+    workDays: 0
+  });
+  const [dayOffs, setDayOffs] = useState<Array<{
+    date: Date;
+    isDayOff: boolean;
+    type: string | null;
+    description: string | null;
+    configId: string | null;
+  }>>([]);
+  
+  const [firebaseConnected, setFirebaseConnected] = useState<boolean | null>(null);
+  const [, setLoading] = useState(false);
+    const [, setUsingFallback] = useState(false);
 
 
-  const days = getMonthDays(month, year)
-  const firstDayWeek = days[0].getDay()
+  // Carregar configurações e estatísticas
+  const loadConfigs = useCallback(async (service: DayOffConfigService) => {
+    setLoading(true);
+    try {
+      console.log(`📅 Carregando configurações para ${currentMonth}/${currentYear}...`);
+      
+      // 1. Carregar configurações do usuário
+      const configs = await service.getUserConfigs();
+      console.log(`✅ ${configs.length} configurações carregadas:`, configs);
+      
+      // 2. Calcular dias do mês atual
+      const days = getMonthDays(currentMonth, currentYear);
+      const dayOffData: Array<{
+        date: Date;
+        isDayOff: boolean;
+        type: string | null;
+        description: string | null;
+        configId: string | null;
+      }> = [];
+      
+      // 3. Verificar cada dia do mês
+      for (const day of days) {
+        try {
+          const dayOffInfo = await service.isDayOff(day);
+          dayOffData.push({
+            date: day,
+            isDayOff: dayOffInfo.isDayOff,
+            type: dayOffInfo.type,
+            description: dayOffInfo.description,
+            configId: dayOffInfo.configId
+          });
+          
+          // Log para debug
+          if (dayOffInfo.isDayOff) {
+            console.log(`📌 ${day.toLocaleDateString('pt-BR')}: ${dayOffInfo.type} - ${dayOffInfo.description}`);
+          }
+        } catch (error) {
+          console.error(`❌ Erro ao processar dia ${day.toLocaleDateString('pt-BR')}:`, error);
+          dayOffData.push({
+            date: day,
+            isDayOff: false,
+            type: null,
+            description: null,
+            configId: null
+          });
+        }
+      }
+      
+      setDayOffs(dayOffData);
+      
+      // 4. Calcular estatísticas
+      const stats = await service.getMonthStats(currentMonth, currentYear);
+      console.log('📊 Estatísticas:', stats);
+      setDayOffStats(stats);
+      
+    } catch (error) {
+      console.error('❌ Erro ao carregar configurações:', error);
+      // Fallback: dias sem folgas
+      const days = getMonthDays(currentMonth, currentYear);
+      setDayOffs(days.map(day => ({
+        date: day,
+        isDayOff: false,
+        type: null,
+        description: null,
+        configId: null
+      })));
+      
+      // Estatísticas zeradas
+      setDayOffStats({
+        fixedDaysOff: 0,
+        regularDaysOff: 0,
+        extraDaysOff: 0,
+        totalDaysOff: 0,
+        workDays: 0
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [currentMonth, currentYear]);
+
+  useEffect(() => {
+  const syncOnLoad = async () => {
+    if (configService && user?.uid) {
+      // Verificar se precisa sincronizar
+      const lastSync = localStorage.getItem(`@dayoff/last_sync_${user.uid}`);
+      const now = Date.now();
+      
+      // Sincronizar a cada 1 hora
+      if (!lastSync || (now - parseInt(lastSync)) > 3600000) {
+        console.log('🔄 Sincronização automática...');
+        await syncLocalToFirebase();
+      }
+    }
+  };
+  
+  syncOnLoad();
+}, [configService, user]);
+
+const syncLocalToFirebase = async () => {
+  if (!user?.uid || !configService) return;
+  
+  try {
+    // ... código de sincronização acima ...
+    
+    // Atualizar timestamp
+    localStorage.setItem(`@dayoff/last_sync_${user.uid}`, Date.now().toString());
+    
+  } catch (error) {
+    console.error('❌ Erro na sincronização automática:', error);
+  }
+};
+   
+  useEffect(() => {
+    if (user) {
+      const service = new DayOffConfigService(user.uid);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setConfigService(service);
+      loadConfigs(service);
+    }
+  }, [user, loadConfigs]);
+
+  useEffect(() => {
+  const checkConnection = async () => {
+    if (configService) {
+      try {
+        // Testar conexão
+        const connected = await configService.testFirebaseConnection?.();
+        setFirebaseConnected(connected);
+        
+        if (!connected) {
+          console.warn('⚠️ Firebase desconectado, usando modo offline');
+          setUsingFallback(true);
+        }
+      } catch (error) {
+        console.error('❌ Erro ao verificar conexão:', error);
+        setFirebaseConnected(false);
+        setUsingFallback(true);
+      }
+    }
+  };
+  
+  if (configService) {
+    checkConnection();
+  }
+}, [configService]);
+
 
   // Navegação do calendário
   const handlePrevMonth = () => {
-    if (month === 0) {
-      setMonth(11)
-      setYear(y => y - 1)
-    } else setMonth(m => m - 1)
-  }
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(y => y - 1);
+    } else {
+      setCurrentMonth(m => m - 1);
+    }
+  };
 
   const handleNextMonth = () => {
-    if (month === 11) {
-      setMonth(0)
-      setYear(y => y + 1)
-    } else setMonth(m => m + 1)
-  }
-
-  // Estatísticas
-  const totalDaysInMonth = days.length
-  const sundays = days.filter(isSundayOff).length
-  const wednesdays = days.filter(isWednesday).length
-  const extraDaysInMonth = days.filter(day => 
-    isExtraDayOff(day)
-  ).length
-  const totalDaysOff = sundays + wednesdays + extraDaysInMonth
-  const workDays = totalDaysInMonth - totalDaysOff
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(y => y + 1);
+    } else {
+      setCurrentMonth(m => m + 1);
+    }
+  };
 
   // Manipular folga extra
-  const handleToggleDayOff = (date: Date) => {
-  const dateString = date.toISOString().split('T')[0]
+  const handleToggleDayOff = async (date: Date) => {
+    if (!configService) return;
 
-  if (isExtraDayOff(date)) {
-    removeExtraDayOff(dateString)
-  } else {
-    addExtraDayOff(dateString)
-  }
+    try {
+      const dayOffInfo = await configService.isDayOff(date);
+      
+      if (dayOffInfo.isDayOff && dayOffInfo.type === 'extra') {
+        // Remover folga extra existente
+        if (dayOffInfo.configId) {
+          await configService.removeConfig(dayOffInfo.configId);
+        }
+      } else {
+        // Adicionar nova folga extra
+        await configService.addExtraDayOff(date, 'Folga Extra');
+      }
+      
+      // Recarregar configurações
+      await loadConfigs(configService);
+      setSelectedDate(null);
+    } catch (error) {
+      console.error('Erro ao alternar folga:', error);
+    }
+  };
 
-  setSelectedDate(null)
-}
+  // Calcular dias do mês
+  const days = getMonthDays(currentMonth, currentYear);
+  const firstDayWeek = days[0].getDay();
+  
+  // Estatísticas atualizadas
+  const totalDaysOff = dayOffStats.totalDaysOff;
+  const workDays = dayOffStats.workDays;
+  const extraDaysInMonth = dayOffStats.extraDaysOff;
 
+  // Determinar se um dia é folga
+  const getDayOffInfo = (date: Date) => {
+    const dayOff = dayOffs.find(d => 
+      d.date.getDate() === date.getDate() &&
+      d.date.getMonth() === date.getMonth() &&
+      d.date.getFullYear() === date.getFullYear()
+    );
+    
+    return dayOff || { isDayOff: false, type: null, description: null };
+  };
 
   return (
     <div style={styles.container}>
@@ -150,7 +341,65 @@ export default function DayOffCalendar() {
           </h1>
           <div style={styles.subtitle}>Gerencie seus dias de descanso</div>
         </div>
+        
+        <div style={styles.headerActions}>
+          <button 
+            onClick={() => navigate('/dayoff-settings')}
+            style={styles.settingsButton}
+          >
+            <Icons.Settings /> Configurar Folgas
+          </button>
+        </div>
       </div>
+      {/* Adicione após o header */}
+{firebaseConnected !== null && (
+  <div style={{
+    padding: '8px 16px',
+    marginBottom: '20px',
+    background: firebaseConnected 
+      ? 'rgba(16, 185, 129, 0.1)' 
+      : 'rgba(245, 158, 11, 0.1)',
+    border: `1px solid ${firebaseConnected ? '#10b981' : '#f59e0b'}`,
+    borderRadius: '8px',
+    color: firebaseConnected ? '#10b981' : '#f59e0b',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  }}>
+    {firebaseConnected ? '✅' : '⚠️'}
+    <span>
+      {firebaseConnected 
+        ? 'Conectado ao Firebase' 
+        : 'Modo offline - usando cache local'}
+    </span>
+    
+    {!firebaseConnected && (
+      <button 
+        onClick={async () => {
+          if (configService) {
+            console.log('🔄 Tentando reconectar...');
+            setFirebaseConnected(null);
+            await loadConfigs(configService);
+          }
+        }}
+        style={{
+          marginLeft: 'auto',
+          background: 'transparent',
+          border: '1px solid currentColor',
+          color: 'inherit',
+          padding: '4px 8px',
+          borderRadius: '4px',
+          fontSize: '12px'
+        }}
+      >
+        Tentar reconectar
+      </button>
+    )}
+  </div>
+)}
+
+
+
 
       {/* CARDS DE RESUMO */}
       <div style={styles.statsGrid}>
@@ -185,6 +434,98 @@ export default function DayOffCalendar() {
         </div>
       </div>
 
+      {/* Adicione após o header */}
+{firebaseConnected !== null && (
+  <div style={{
+    padding: '8px 16px',
+    marginBottom: '20px',
+    background: firebaseConnected 
+      ? 'rgba(16, 185, 129, 0.1)' 
+      : 'rgba(245, 158, 11, 0.1)',
+    border: `1px solid ${firebaseConnected ? '#10b981' : '#f59e0b'}`,
+    borderRadius: '8px',
+    color: firebaseConnected ? '#10b981' : '#f59e0b',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  }}>
+    {firebaseConnected ? '✅' : '⚠️'}
+    <span>
+      {firebaseConnected 
+        ? 'Conectado ao Firebase' 
+        : 'Modo offline - usando cache local'}
+    </span>
+    
+    {!firebaseConnected && (
+      <button 
+        onClick={async () => {
+          if (configService) {
+            console.log('🔄 Tentando reconectar...');
+            setFirebaseConnected(null);
+            await loadConfigs(configService);
+          }
+        }}
+        style={{
+          marginLeft: 'auto',
+          background: 'transparent',
+          border: '1px solid currentColor',
+          color: 'inherit',
+          padding: '4px 8px',
+          borderRadius: '4px',
+          fontSize: '12px'
+        }}
+      >
+        Tentar reconectar
+      </button>
+    )}
+  </div>
+)}
+
+<button 
+  onClick={async () => {
+    if (configService) {
+      console.log('🔄 Forçando sincronização...');
+      
+      // 1. Buscar do Firestore
+      const db = getFirestoreDb();
+      if (db && user?.uid) {
+        // CORREÇÃO: Use COLLECTIONS em vez de collection
+try {
+  const configsRef = collection(db, 'users', user.uid, COLLECTIONS.DAY_OFF_CONFIGS);
+  const snapshot = await getDocs(configsRef);
+  
+  console.log(`✅ ${snapshot.size} configurações do Firestore`);
+  
+  // Salvar no localStorage - use LOCAL_STORAGE_KEYS
+  const configsData: unknown[] = [];
+  snapshot.forEach(doc => {
+    configsData.push({
+      id: doc.id,
+      ...doc.data()
+    });
+  });
+  
+  localStorage.setItem(
+    `${LOCAL_STORAGE_KEYS.DAY_OFF_CONFIGS}_${user.uid}`,
+    JSON.stringify(configsData)
+  );
+  
+  // Recarregar
+  await loadConfigs(configService);
+  alert(`✅ Sincronizado! ${snapshot.size} configurações carregadas.`);
+  
+} catch (error) {
+          console.error('❌ Erro ao sincronizar:', error);
+          alert('❌ Erro ao sincronizar. Verifique a conexão.');
+        }
+      }
+    }
+  }}
+  style={styles.syncButton}
+>
+  🔄 Sincronizar
+</button>
+
       {/* CARD DO CALENDÁRIO */}
       <div style={styles.calendarCard}>
         {/* CABEÇALHO DO MÊS */}
@@ -198,7 +539,7 @@ export default function DayOffCalendar() {
           </button>
           
           <div style={styles.monthDisplay}>
-            <div style={styles.monthName}>{monthNames[month]} {year}</div>
+            <div style={styles.monthName}>{monthNames[currentMonth]} {currentYear}</div>
             <div style={styles.monthStats}>
               {totalDaysOff} folgas • {workDays} úteis
             </div>
@@ -236,35 +577,34 @@ export default function DayOffCalendar() {
           ))}
 
           {days.map(date => {
-            const isToday = date.toDateString() === today.toDateString()
-            const isSunday = isSundayOff(date)
-            const isWed = isWednesday(date)
-            const isExtra = isExtraDayOff(date)
-            const isDayOff = isSunday || isWed || isExtra
-            const isSelected = selectedDate?.toDateString() === date.toDateString()
+            const isToday = date.toDateString() === today.toDateString();
+            const dayOffInfo = getDayOffInfo(date);
+            const isDayOff = dayOffInfo.isDayOff;
+            const dayOffType = dayOffInfo.type;
+            const isSelected = selectedDate?.toDateString() === date.toDateString();
 
             // Determinar cor baseada no tipo de folga
-            let backgroundColor = '#0f172a'
-            let borderColor = '#334155'
+            let backgroundColor = '#0f172a';
+            let borderColor = '#334155';
             
-            if (isExtra) {
-              backgroundColor = 'rgba(16, 185, 129, 0.2)'
-              borderColor = '#10b981'
-            } else if (isSunday) {
-              backgroundColor = 'rgba(139, 92, 246, 0.2)'
-              borderColor = '#8b5cf6'
-            } else if (isWed) {
-              backgroundColor = 'rgba(59, 130, 246, 0.2)'
-              borderColor = '#3b82f6'
+            if (dayOffType === 'extra') {
+              backgroundColor = 'rgba(16, 185, 129, 0.2)';
+              borderColor = '#10b981';
+            } else if (dayOffType === 'fixed') {
+              backgroundColor = 'rgba(139, 92, 246, 0.2)';
+              borderColor = '#8b5cf6';
+            } else if (dayOffType === 'regular') {
+              backgroundColor = 'rgba(59, 130, 246, 0.2)';
+              borderColor = '#3b82f6';
             }
 
             if (isToday) {
-              borderColor = '#f59e0b'
+              borderColor = '#f59e0b';
             }
 
             if (isSelected) {
-              borderColor = '#ffffff'
-              backgroundColor = 'rgba(59, 130, 246, 0.4)'
+              borderColor = '#ffffff';
+              backgroundColor = 'rgba(59, 130, 246, 0.4)';
             }
 
             return (
@@ -277,7 +617,7 @@ export default function DayOffCalendar() {
                   border: `2px solid ${borderColor}`,
                   fontWeight: isDayOff ? '600' : '400'
                 }}
-                aria-label={`Dia ${date.getDate()} de ${monthNames[month]}`}
+                aria-label={`Dia ${date.getDate()} de ${monthNames[currentMonth]}`}
               >
                 <div style={styles.dayNumber}>
                   {date.getDate()}
@@ -288,9 +628,9 @@ export default function DayOffCalendar() {
                 
                 {isDayOff && (
                   <div style={styles.dayOffIndicator}>
-                    {isExtra ? (
+                    {dayOffType === 'extra' ? (
                       <span style={{ color: '#10b981' }}>★</span>
-                    ) : isSunday ? (
+                    ) : dayOffType === 'fixed' ? (
                       <span style={{ color: '#8b5cf6' }}>⊙</span>
                     ) : (
                       <span style={{ color: '#3b82f6' }}>⋆</span>
@@ -298,7 +638,7 @@ export default function DayOffCalendar() {
                   </div>
                 )}
               </button>
-            )
+            );
           })}
         </div>
 
@@ -327,27 +667,38 @@ export default function DayOffCalendar() {
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Tipo:</span>
                 <span style={styles.infoValue}>
-                  {isExtraDayOff(selectedDate) ? 'Folga Extra' :
-                   isSundayOff(selectedDate) ? 'Domingo (Folga)' :
-                   isWednesday(selectedDate) ? 'Quarta-feira' : 'Dia Útil'}
+                  {(() => {
+                    const info = getDayOffInfo(selectedDate);
+                    if (info.type === 'extra') return 'Folga Extra';
+                    if (info.type === 'fixed') return 'Folga Fixa';
+                    if (info.type === 'regular') return 'Folga Regular';
+                    return 'Dia Útil';
+                  })()}
                 </span>
               </div>
               
-              {isExtraDayOff(selectedDate) ? (
-                <button
-                  onClick={() => handleToggleDayOff(selectedDate)}
-                  style={styles.removeButton}
-                >
-                  <Icons.X /> Remover Folga Extra
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleToggleDayOff(selectedDate)}
-                  style={styles.addButton}
-                >
-                  <Icons.Plus /> Adicionar Folga Extra
-                </button>
-              )}
+              {(() => {
+                const info = getDayOffInfo(selectedDate);
+                if (info.type === 'extra') {
+                  return (
+                    <button
+                      onClick={() => handleToggleDayOff(selectedDate)}
+                      style={styles.removeButton}
+                    >
+                      <Icons.X /> Remover Folga Extra
+                    </button>
+                  );
+                } else {
+                  return (
+                    <button
+                      onClick={() => handleToggleDayOff(selectedDate)}
+                      style={styles.addButton}
+                    >
+                      <Icons.Plus /> Adicionar Folga Extra
+                    </button>
+                  );
+                }
+              })()}
             </div>
           </div>
         )}
@@ -360,16 +711,16 @@ export default function DayOffCalendar() {
           <div style={styles.legendItem}>
             <div style={{ ...styles.legendColor, background: 'rgba(139, 92, 246, 0.2)', borderColor: '#8b5cf6' }}></div>
             <div>
-              <div style={styles.legendLabel}>Domingo</div>
-              <div style={styles.legendSubtitle}>Folga semanal</div>
+              <div style={styles.legendLabel}>Folga Fixa</div>
+              <div style={styles.legendSubtitle}>Dias específicos da semana</div>
             </div>
           </div>
           
           <div style={styles.legendItem}>
             <div style={{ ...styles.legendColor, background: 'rgba(59, 130, 246, 0.2)', borderColor: '#3b82f6' }}></div>
             <div>
-              <div style={styles.legendLabel}>Quarta-feira</div>
-              <div style={styles.legendSubtitle}>Dia regular</div>
+              <div style={styles.legendLabel}>Folga Regular</div>
+              <div style={styles.legendSubtitle}>A cada X dias/semanas</div>
             </div>
           </div>
           
@@ -396,15 +747,15 @@ export default function DayOffCalendar() {
         <h3 style={styles.tipsTitle}>💡 Dicas</h3>
         <ul style={styles.tipsList}>
           <li>Clique em qualquer dia para gerenciar folgas extras</li>
-          <li>Domingos são automaticamente considerados folga</li>
+          <li>Configure folgas fixas e regulares nas Configurações</li>
           <li>Use folgas extras para dias especiais ou descanso adicional</li>
         </ul>
       </div>
     </div>
-  )
+  );
 }
 
-// Estilos
+// Estilos (mantenha os mesmos estilos do seu código original)
 const styles = {
   container: {
     padding: '20px 16px',
@@ -755,7 +1106,8 @@ const styles = {
   
   tipsList: {
     margin: 0,
-    paddingLeft: '20px'
+    paddingLeft: '20px',
+    color: '#cbd5e1'
   },
   
   tipsListLi: {
@@ -763,5 +1115,39 @@ const styles = {
     color: '#cbd5e1',
     marginBottom: '8px',
     lineHeight: '1.5'
-  }
+  },
+  
+  headerActions: {
+    marginLeft: 'auto',
+    display: 'flex',
+    gap: '8px'
+  },
+  
+  settingsButton: {
+    padding: '8px 16px',
+    background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+    border: 'none',
+    borderRadius: '8px',
+    color: 'white',
+    fontWeight: '600',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '14px'
+  },
+  // Adicione ao styles
+syncButton: {
+  padding: '8px 16px',
+  background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+  border: 'none',
+  borderRadius: '8px',
+  color: 'white',
+  fontWeight: '600',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  fontSize: '14px'
 }
+};

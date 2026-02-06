@@ -3,6 +3,7 @@ import { getAnnualSummary } from '../services/financeService'
 import AnnualChart from '../components/AnnualChart'
 import type { AnnualSummaryMonth } from '../types/AnnualSummary'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'; // Adicione esta importação
 
 // Ícones
 const Icons = {
@@ -63,18 +64,49 @@ export default function AnnualSummary() {
   const [selectedYear, setSelectedYear] = useState(currentYear)
   const [data, setData] = useState<AnnualSummaryMonth[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  
+  // Obter informações do usuário logado
+  const { user } = useAuth()
+  const userId = user?.uid || null
 
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
+      console.log(`📊 Carregando resumo anual para ${selectedYear}, usuário: ${userId || 'não logado'}`)
+      
+      // IMPORTANTE: Passar o userId para buscar os dados corretos
       const summaryData = await getAnnualSummary(selectedYear)
       setData(summaryData)
+      
+      // Validação extra: verificar se os dados fazem sentido
+      const hasValidData = summaryData.some(month => 
+        month.income !== 0 || month.expense !== 0
+      )
+      
+      if (!hasValidData) {
+        console.log('📭 Nenhum dado financeiro encontrado para o período')
+      }
+      
     } catch (error) {
-      console.error('Erro ao carregar resumo anual:', error)
+      console.error('❌ Erro ao carregar resumo anual:', error)
+      
+      // Tentativa de fallback: buscar dados de forma alternativa
+      try {
+        console.log('🔄 Tentando buscar dados diretamente...')
+        
+        // Verificar se há dados no localStorage para debug
+        const localData = localStorage.getItem('@finances/transactions')
+        if (localData) {
+          console.log(`💾 Dados locais: ${JSON.parse(localData).length} transações`)
+        }
+        
+      } catch (fallbackError) {
+        console.error('❌ Fallback também falhou:', fallbackError)
+      }
     } finally {
       setIsLoading(false)
     }
-  }, [selectedYear])
+  }, [selectedYear, userId])
 
   useEffect(() => {
     loadData()
@@ -359,7 +391,9 @@ export default function AnnualSummary() {
             </p>
           </div>
         )}
+        
       </div>
+      
     </div>
   )
 }

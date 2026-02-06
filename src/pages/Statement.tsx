@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback } from 'react'
-import { getTransactionsByFilter, calculateSummary } from '../services/financeService'
+import { getTransactionsByFilter, calculateSummary, getTotalBalanceForStatement} from '../services/financeService'
 import type { Transaction } from '../types/Transaction'
 import { useNavigate } from 'react-router-dom'
+import { getCategories } from '../services/categoryService'
+import { useAuth } from '../hooks/useAuth'
 
-
-// Ícones (adicionar ícone de calendário para datas)
 const Icons = {
-  // ... outros ícones permanecem iguais ...
+
   
   CalendarDay: () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -69,20 +69,30 @@ const Icons = {
 export default function Statement() {
   const navigate = useNavigate()
   const today = new Date()
-
+  const { user } = useAuth()
   const [month, setMonth] = useState(today.getMonth() + 1)
   const [year, setYear] = useState(today.getFullYear())
-  const [category, setCategory] = useState('Todos')
+  const [selectedCategory, setSelectedCategory] = useState('Todos') // MUDAR NOME DA VARIÁVEL
   const [search, setSearch] = useState('')
   const [items, setItems] = useState<Transaction[]>([])
   const [groupedItems, setGroupedItems] = useState<Record<string, Transaction[]>>({})
   const [isLoading, setIsLoading] = useState(false)
+  const [categories, setCategories] = useState<string[]>(['Todos']) // MANTER ESTA VARIÁVEL
+ 
+  const [statementBalance, setStatementBalance] = useState({
+    monthBalance: 0,           // Saldo apenas do mês atual
+    accumulatedBalance: 0,     // Saldo total acumulado (incluindo meses anteriores)
+    previousBalance: 0         // Saldo dos meses anteriores
+  })
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false)
 
   // Função para formatar data para chave de agrupamento (YYYY-MM-DD)
   const getDateKey = (dateString: string) => {
     const date = new Date(dateString)
     return date.toISOString().split('T')[0] // Retorna YYYY-MM-DD
   }
+
+  
 
   // Função para formatar data para exibição
   const formatDateDisplay = (dateString: string) => {
@@ -122,6 +132,20 @@ export default function Statement() {
     }, 0)
   }*/
 
+    useEffect(() => {
+  const loadCategories = async () => {
+    try {
+      const cats = await getCategories()
+      const categoryNames = ['Todos', ...cats.map(c => c.name).filter(Boolean)]
+      setCategories(Array.from(new Set(categoryNames))) // Remover duplicatas
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error)
+    }
+  }
+  
+  loadCategories()
+}, [])
+
   // Agrupar transações por data
   const groupTransactionsByDate = (transactions: Transaction[]) => {
     const grouped: Record<string, Transaction[]> = {}
@@ -149,27 +173,39 @@ export default function Statement() {
   // Carregar transações
   const loadTransactions = useCallback(async () => {
     setIsLoading(true)
+    setIsLoadingBalance(true)
+    
     try {
+      // 1. Carregar transações do mês
       const data = await getTransactionsByFilter(
         month,
         year,
-        category === 'Todos' ? undefined : category
+        selectedCategory === 'Todos' ? undefined : selectedCategory
       )
       setItems(data)
       setGroupedItems(groupTransactionsByDate(data))
+      
+      // 2. 🔥 CARREGAR SALDO ACUMULADO
+      const userId = user?.uid
+      const balanceData = await getTotalBalanceForStatement(month, year, userId)
+      setStatementBalance(balanceData)
+      
+      console.log('💰 Saldo carregado:', balanceData)
+      
     } catch (error) {
       console.error('Erro ao carregar transações:', error)
     } finally {
       setIsLoading(false)
+      setIsLoadingBalance(false)
     }
-  }, [month, year, category])
+  }, [month, year, selectedCategory, user])
 
   useEffect(() => {
     loadTransactions()
   }, [loadTransactions])
 
-  // Resumo calculado
-  const summary = calculateSummary(items)
+  // Resumo do mês atual
+  const monthSummary = calculateSummary(items)
 
   // Filtrar por busca
   const filteredGroupedItems = Object.keys(groupedItems).reduce((filtered, dateKey) => {
@@ -206,22 +242,7 @@ export default function Statement() {
     month: 'long'
   }).replace(/^\w/, c => c.toUpperCase())
 
-  const categories = [
-  'Todos',
-  'Jogos', 
-  'Comida', 
-  'Roupa', 
-  'Cabelo', 
-  'Salario',
-  'Lazer', 
-  'Computador', 
-  'Pink', 
-  'Mãe', 
-  'Cofre', 
-  'Outros',
-  'Retirada do Cofre', // Adicionada para transações de retirada
-  'Teste' // Para testes
-]
+
 
   return (
     <div style={styles.container}>
@@ -250,7 +271,7 @@ export default function Statement() {
           </div>
           <div style={styles.summaryContent}>
             <div style={styles.summaryLabel}>Entradas</div>
-            <div style={styles.summaryValue}>R$ {summary.income.toFixed(2)}</div>
+            <div style={styles.summaryValue}>R$ {monthSummary.income.toFixed(2)}</div>
           </div>
         </div>
 
@@ -260,26 +281,108 @@ export default function Statement() {
           </div>
           <div style={styles.summaryContent}>
             <div style={styles.summaryLabel}>Saídas</div>
-            <div style={styles.summaryValue}>R$ {summary.expense.toFixed(2)}</div>
+            <div style={styles.summaryValue}>R$ {monthSummary.expense.toFixed(2)}</div>
           </div>
         </div>
 
+        {/* 🔥 SALDO (MÊS + ACUMULADO) - ÚNICO CARD ATUALIZADO */}
         <div style={{ 
           ...styles.summaryCard, 
-          background: summary.total >= 0 
+          position: 'relative',
+          overflow: 'hidden',
+          background: statementBalance.accumulatedBalance >= 0 
             ? 'linear-gradient(135deg, #3b82f6, #2563eb)' 
-            : 'linear-gradient(135deg, #f59e0b, #d97706)'
+            : 'linear-gradient(135deg, #f59e0b, #d97706)',
+          minHeight: '100px'
         }}>
+          {/* INDICADOR DE CARREGAMENTO */}
+          {isLoadingBalance && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1
+            }}>
+              <div style={styles.loadingSpinnerSmall}></div>
+            </div>
+          )}
+          
           <div style={styles.summaryIcon}>
-            {summary.total >= 0 ? (
+            {statementBalance.accumulatedBalance >= 0 ? (
               <Icons.Income />
             ) : (
               <Icons.Expense />
             )}
           </div>
+          
           <div style={styles.summaryContent}>
-            <div style={styles.summaryLabel}>Saldo</div>
-            <div style={styles.summaryValue}>R$ {summary.total.toFixed(2)}</div>
+            {/* TÍTULO COM INDICADOR DE SALDO ACUMULADO */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px',
+              marginBottom: '4px'
+            }}>
+              <div style={styles.summaryLabel}>Saldo Total</div>
+              {statementBalance.previousBalance > 0 && (
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  padding: '2px 6px',
+                  borderRadius: '10px',
+                  fontSize: '10px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '2px'
+                }}>
+                  <span style={{ fontSize: '9px' }}>💰</span>
+                  <span>Acumulado</span>
+                </div>
+              )}
+            </div>
+            
+            {/* VALOR PRINCIPAL (ACUMULADO) */}
+            <div style={{
+              ...styles.summaryValue,
+              fontSize: '20px',
+              marginBottom: '4px'
+            }}>
+              R$ {statementBalance.accumulatedBalance.toFixed(2)}
+            </div>
+            
+            {/* DETALHAMENTO DO SALDO */}
+            <div style={styles.balanceBreakdown}>
+              <div style={styles.breakdownRow}>
+                <span style={styles.breakdownLabel}>
+                  <span style={{ fontSize: '10px', marginRight: '4px' }}>📅</span>
+                  Mês atual:
+                </span>
+                <span style={{
+                  ...styles.breakdownValue,
+                  color: monthSummary.total >= 0 ? '#a7f3d0' : '#fecaca'
+                }}>
+                  {monthSummary.total >= 0 ? '+' : ''}R$ {monthSummary.total.toFixed(2)}
+                </span>
+              </div>
+              
+              {statementBalance.previousBalance > 0 && (
+                <div style={styles.breakdownRow}>
+                  <span style={styles.breakdownLabel}>
+                    <span style={{ fontSize: '10px', marginRight: '4px' }}>📊</span>
+                    Anteriores:
+                  </span>
+                  <span style={styles.breakdownValue}>
+                    +R$ {statementBalance.previousBalance.toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -316,23 +419,23 @@ export default function Statement() {
             </div>
           </div>
 
-          {/* CATEGORIA */}
-          <div style={styles.filterGroup}>
-            <label style={styles.filterLabel}>
-              <Icons.Category /> Categoria
-            </label>
-            <select 
-              value={category} 
-              onChange={e => setCategory(e.target.value)}
-              style={styles.selectInput}
-            >
-              {categories.map(cat => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* CATEGORIA - USAR selectedCategory */}
+      <div style={styles.filterGroup}>
+        <label style={styles.filterLabel}>
+          <Icons.Category /> Categoria
+        </label>
+        <select 
+          value={selectedCategory} // USAR selectedCategory
+          onChange={e => setSelectedCategory(e.target.value)} // USAR setSelectedCategory
+          style={styles.selectInput}
+        >
+          {categories.map((cat: string) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
+          ))}
+        </select>
+      </div>
 
           {/* BUSCA */}
           <div style={styles.filterGroup}>
@@ -919,7 +1022,50 @@ const styles = {
   
   transactionTypeBadge: {
     // Estilo definido inline
-  }
+  },
+
+  balanceBreakdown: {
+  marginTop: '6px',
+  padding: '8px',
+  background: 'rgba(255, 255, 255, 0.1)',
+  borderRadius: '6px',
+  fontSize: '11px'
+},
+
+breakdownRow: {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: '4px'
+},
+
+breakdownLabel: {
+  color: 'rgba(255, 255, 255, 0.8)',
+  fontSize: '10px',
+  display: 'flex',
+  alignItems: 'center'
+},
+
+breakdownValue: {
+  color: '#ffffff',
+  fontWeight: '600',
+  fontSize: '11px'
+},
+
+loadingSpinnerSmall: {
+  width: '20px',
+  height: '20px',
+  border: '2px solid rgba(255, 255, 255, 0.3)',
+  borderTop: '2px solid #ffffff',
+  borderRadius: '50%',
+  animation: 'spin 1s linear infinite'
+},
+
+// Adicione a animação spin se ainda não tiver
+'@keyframes spin': {
+  '0%': { transform: 'rotate(0deg)' },
+  '100%': { transform: 'rotate(360deg)' }
+}
 }
 
 // Adicionar animação de spin

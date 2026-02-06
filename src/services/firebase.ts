@@ -1,7 +1,4 @@
-
-
-// src/services/firebase.ts
-import { initializeApp } from 'firebase/app';
+import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { 
   getFirestore, 
   collection, 
@@ -10,12 +7,13 @@ import {
   getDoc, 
   getDocs, 
   Timestamp,
-  Firestore
+  Firestore,
+  enableIndexedDbPersistence
 } from 'firebase/firestore';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, type Auth, onAuthStateChanged } from 'firebase/auth';
 import type { Transaction, Goal } from './storageService';
 
-// Configuração do Firebase (substitua com suas credenciais)
+// Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAJPxldozWGXPtjdYs4vFWEfv3-9PZqVwQ",
   authDomain: "fletnote.firebaseapp.com",
@@ -27,7 +25,7 @@ const firebaseConfig = {
 };
 
 // Inicializar Firebase
-let app;
+let app: FirebaseApp | undefined;
 export let db: Firestore;
 export let auth: Auth;
 
@@ -35,6 +33,16 @@ try {
   app = initializeApp(firebaseConfig);
   db = getFirestore(app);
   auth = getAuth(app);
+  
+  // Habilitar persistência offline
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.log('Persistência já ativada em outra aba');
+    } else if (err.code === 'unimplemented') {
+      console.log('Navegador não suporta persistência');
+    }
+  });
+  
   console.log('✅ Firebase inicializado com sucesso');
 } catch (error) {
   console.error('❌ Erro ao inicializar Firebase:', error);
@@ -155,6 +163,50 @@ export const syncGoal = async (userId: string, goal: Goal): Promise<boolean> => 
   }
 };
 
+export const initializeFirebase = () => {
+  try {
+    if (!app) {
+      app = initializeApp(firebaseConfig);
+      console.log('✅ Firebase inicializado');
+    }
+    
+    if (!db) {
+      db = getFirestore(app);
+      
+      // Habilitar persistência offline
+      enableIndexedDbPersistence(db).catch((err) => {
+        if (err.code === 'failed-precondition') {
+          console.log('Persistência já ativada em outra aba');
+        } else if (err.code === 'unimplemented') {
+          console.log('Navegador não suporta persistência');
+        }
+      });
+      
+      console.log('✅ Firestore inicializado');
+    }
+    
+    if (!auth) {
+      auth = getAuth(app);
+      console.log('✅ Auth inicializado');
+    }
+    
+    return { app, db, auth };
+  } catch (error) {
+    console.error('❌ Erro ao inicializar Firebase:', error);
+    throw error;
+  }
+};
+
+export const getFirestoreDb = (): Firestore => {
+  if (!db) {
+    initializeFirebase();
+  }
+  if (!db) {
+    throw new Error('Firestore não inicializado');
+  }
+  return db;
+};
+
 // ============================
 // SERVIÇO COMPLETO
 // ============================
@@ -183,3 +235,8 @@ export const checkFirebaseConnection = async (): Promise<boolean> => {
     return false;
   }
 };
+
+// ============================
+// EXPORTAR FUNÇÕES DE AUTH
+// ============================
+export { onAuthStateChanged, getAuth };

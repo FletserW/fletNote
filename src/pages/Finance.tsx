@@ -5,11 +5,16 @@ import {
   getTransactionsByFilter,
   calculateSummary,
   addTransaction,
+  saveMonthEndBalance,
+  
+  syncAllBalancesToFirestore,
+  getTotalBalanceForStatement
 } from "../services/financeService";
+
 import { saveAllTransactions } from "../services/storageService"; // Adicionar clearAllData
-import { requestNotificationPermission } from "../services/notificationService";
+//import { requestNotificationPermission } from "../services/notificationService";
 import { getGoal, saveGoal } from "../services/goalService";
-import { useAuth } from "../contexts"; // AuthContext já deve ter função de logout
+import { useAuth } from "../hooks/useAuth"; // AuthContext já deve ter função de logout
 import type { Goal } from "../types/Goal";
 import { firebaseService } from "../services/firebase";
 import { useFirebaseSync } from "../hooks/useFirebaseSync";
@@ -192,7 +197,20 @@ const Icons = {
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
     </svg>
   ),
-  
+
+  Category: () => (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M4 11h16M4 6h16M4 16h16M4 21h16" />
+    </svg>
+  ),
+
   Withdraw: () => (
     <svg
       width="16"
@@ -206,7 +224,7 @@ const Icons = {
       <line x1="8" y1="12" x2="16" y2="12" />
     </svg>
   ),
-  
+
   Save: () => (
     <svg
       width="16"
@@ -221,7 +239,7 @@ const Icons = {
       <polyline points="7 3 7 8 15 8" />
     </svg>
   ),
-  
+
   Cancel: () => (
     <svg
       width="16"
@@ -236,8 +254,6 @@ const Icons = {
       <line x1="9" y1="9" x2="15" y2="15" />
     </svg>
   ),
-
-
 };
 
 export default function Finance() {
@@ -247,7 +263,6 @@ export default function Finance() {
   const { user, loading: authLoading } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing] = useState(false);
   const [goal, setGoal] = useState<Goal>({
@@ -265,7 +280,7 @@ export default function Finance() {
     message: string;
   } | null>(null);
 
-   const [showEditGoalModal, setShowEditGoalModal] = useState(false);
+  const [showEditGoalModal, setShowEditGoalModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal>({
     id: 1,
@@ -285,132 +300,173 @@ export default function Finance() {
   // Refs para controle de sincronização
   const hasLoadedInitialData = useRef(false);
   const hasSyncedAfterLogin = useRef(false);
+  const [showAddPreviousBalance] = useState(false); // NOVO
   const syncTimeoutRef = useRef<number | null>(null); // Alterado para number | null
+  // Estados no Dashboard
+const [availableBalance, setAvailableBalance] = useState(0); // Este será o saldo acumulado
+const [previousMonthBalance, setPreviousMonthBalance] = useState(0);
+const [total, setTotal] = useState(0); // Saldo apenas do mês atual
 
   /* ============================
      LOAD ALL DATA (sistema híbrido)
   ============================ */
-  // src/pages/Finance.tsx - ATUALIZE A FUNÇÃO loadAllData
-  const loadAllData = useCallback(
-    async (showLoading = true) => {
-      if (!isMounted.current) return;
 
-      if (showLoading) {
-        setIsLoading(true);
+// NO Dashboard (Finance.tsx) 
+const loadAllData = useCallback(
+  async (showLoading = true) => {
+    if (!isMounted.current) return;
+
+    if (showLoading) {
+      setIsLoading(true);
+    }
+
+    try {
+      const source = user ? "firebase" : "local";
+      setDataSource(source);
+
+      console.log(`📊 Carregando dados de: ${source}`);
+      if (user) {
+        console.log(`👤 Usuário: ${user.email} (${user.uid})`);
       }
 
-      try {
-        // Determina fonte de dados
-        const source = user ? "firebase" : "local";
-        setDataSource(source);
+      // 1. Carregar transações do mês atual
+      const currentMonth = today.getMonth() + 1;
+      const currentYear = today.getFullYear();
+      
+      const data = await getTransactionsByFilter(
+        currentMonth,
+        currentYear,
+      );
 
-        console.log(`📊 Carregando dados de: ${source}`);
-        if (user) {
-          console.log(`👤 Usuário: ${user.email} (${user.uid})`);
-        }
+      console.log(`📈 ${data.length} transações carregadas`);
 
-        // 🔥 IMPORTANTE: Carrega transações usando a função atualizada que busca do Firestore
-        const data = await getTransactionsByFilter(
-          today.getMonth() + 1,
-          today.getFullYear(),
+      const summary = calculateSummary(data);
+
+      // 2. 🔥 USAR A MESMA FUNÇÃO DO EXTRATO
+      const userId = user?.uid;
+      const balanceData = await getTotalBalanceForStatement(
+        currentMonth,
+        currentYear,
+        userId
+      );
+
+      // 3. Atualizar estados com os dados corretos
+      if (isMounted.current) {
+        setTotal(summary.total);
+        
+        // 🔥 USAR accumulatedBalance ao invés de availableBalance
+        setAvailableBalance(balanceData.accumulatedBalance); // Alteração aqui
+        setPreviousMonthBalance(balanceData.previousBalance);
+        
+        setMonthData({
+          income: summary.income,
+          expense: summary.expense,
+        });
+      }
+
+      // 4. Carrega a meta
+      const storedGoal = await getGoal();
+      if (storedGoal && isMounted.current) {
+        setGoal(storedGoal);
+      } else if (isMounted.current) {
+        await saveGoal(goal);
+      }
+
+      // Atualiza timestamp da última sincronização
+      if (isMounted.current) {
+        setLastSync(
+          new Date().toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
         );
-
-        console.log(`📈 ${data.length} transações carregadas`);
-
-        const summary = calculateSummary(data);
-
-        // Atualiza estados apenas se o componente ainda estiver montado
-        if (isMounted.current) {
-          setTotal(summary.total);
-          setMonthData({
-            income: summary.income,
-            expense: summary.expense,
-          });
-        }
-
-        // Carrega a meta
-        const storedGoal = await getGoal();
-        if (storedGoal && isMounted.current) {
-          setGoal(storedGoal);
-        } else if (isMounted.current) {
-          await saveGoal(goal);
-        }
-
-        // Atualiza timestamp da última sincronização
-        if (isMounted.current) {
-          setLastSync(
-            new Date().toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          );
-        }
-
-        // Marcar que dados iniciais foram carregados
-        hasLoadedInitialData.current = true;
-
-        // 🔥 ATUALIZADO: Verificar dados no Firestore para debug
-        if (user?.uid) {
-          const firestoreTransactions =
-            await firebaseService.getUserTransactions(user.uid);
-          console.log(
-            `🔥 Firestore tem: ${firestoreTransactions.length} transações`,
-          );
-
-          // Se não houver transações no Firestore mas houver localmente, sincronizar
-          if (firestoreTransactions.length === 0 && data.length > 0) {
-            console.log(
-              "🔄 Nenhuma transação no Firestore, iniciando primeira sincronização...",
-            );
-            // Aguardar um pouco antes de sincronizar
-            setTimeout(async () => {
-              try {
-                await firebaseService.syncTransactions(user.uid, data);
-                console.log("✅ Primeira sincronização concluída!");
-              } catch (error) {
-                console.error("❌ Erro na primeira sincronização:", error);
-              }
-            }, 3000);
-          }
-        }
-      } catch (error) {
-        console.error("❌ Erro ao carregar dados:", error);
-
-        // 🔥 NOVO: Em caso de erro no Firestore, tentar carregar apenas do localStorage
-        if (user?.uid) {
-          console.log(
-            "⚠️ Erro no Firestore, tentando carregar do localStorage...",
-          );
-          try {
-            const localData = await getTransactionsByFilter(
-              today.getMonth() + 1,
-              today.getFullYear(),
-            );
-
-            const summary = calculateSummary(localData);
-
-            if (isMounted.current) {
-              setTotal(summary.total);
-              setMonthData({
-                income: summary.income,
-                expense: summary.expense,
-              });
-            }
-          } catch (localError) {
-            console.error(
-              "❌ Erro ao carregar do localStorage também:",
-              localError,
-            );
-          }
-        }
-      } finally {
-        if (isMounted.current && showLoading) {
-          setIsLoading(false);
-        }
       }
-    },
-    [today, goal, user],
-  );
+
+      hasLoadedInitialData.current = true;
+
+      console.log('💰 Saldos (Dashboard):', {
+        mesAtual: summary.total,
+        mesesAnteriores: balanceData.previousBalance,
+        totalAcumulado: balanceData.accumulatedBalance
+      });
+
+    } catch (error) {
+      console.error("❌ Erro ao carregar dados:", error);
+    } finally {
+      if (isMounted.current && showLoading) {
+        setIsLoading(false);
+      }
+    }
+  },
+  [today, goal, user],
+);
+
+// Função extra para salvar saldo de qualquer mês
+const saveSpecificMonthBalance = async () => {
+  const month = prompt("Digite o mês (1-12):", "12");
+  const year = prompt("Digite o ano:", "2024");
+  const balance = prompt("Digite o saldo final:", "200");
+  
+  if (month && year && balance) {
+    const monthNum = parseInt(month);
+    const yearNum = parseInt(year);
+    const balanceNum = parseFloat(balance.replace(',', '.'));
+    
+    if (!isNaN(monthNum) && !isNaN(yearNum) && !isNaN(balanceNum)) {
+      await saveMonthEndBalance(monthNum, yearNum, balanceNum, user?.uid);
+      alert(`✅ Saldo de R$ ${balanceNum.toFixed(2)} salvo para ${monthNum}/${yearNum}`);
+      await loadAllData(false);
+    }
+  }
+};
+
+useEffect(() => {
+  const handleMonthChange = () => {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    
+    // Verificar se o mês mudou desde a última atualização
+    const lastUpdate = localStorage.getItem('@finances/last_balance_update');
+    if (lastUpdate) {
+      const lastUpdateDate = new Date(lastUpdate);
+      if (lastUpdateDate.getMonth() + 1 !== currentMonth || 
+          lastUpdateDate.getFullYear() !== currentYear) {
+        // Mês mudou, recarregar saldos
+        refreshBalances();
+        localStorage.setItem('@finances/last_balance_update', new Date().toISOString());
+      }
+    }
+  };
+  
+  // Verificar a cada minuto se o mês mudou
+  const interval = setInterval(handleMonthChange, 60000);
+  
+  return () => clearInterval(interval);
+}, [user]);
+
+const refreshBalances = async () => {
+  try {
+    const currentMonth = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+    const userId = user?.uid;
+    
+    // Buscar saldo acumulado
+    const balanceData = await getTotalBalanceForStatement(
+      currentMonth,
+      currentYear,
+      userId
+    );
+    
+    // Atualizar estados
+    setAvailableBalance(balanceData.accumulatedBalance);
+    setPreviousMonthBalance(balanceData.previousBalance);
+    
+    console.log('🔁 Saldos atualizados:', balanceData);
+  } catch (error) {
+    console.error('❌ Erro ao atualizar saldos:', error);
+  }
+};
 
   const handleLogout = async () => {
     const confirmLogout = window.confirm(
@@ -558,52 +614,89 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
       fontSize: "12px",
       zIndex: 1000,
       cursor: "not-allowed;", //pointer or not-allowed;
-      opacity: 0
+      opacity: 0,
     }}
   >
     🔍 Verificar Dados
   </button>;
 
-  useEffect(() => {
-    isMounted.current = true;
-    requestNotificationPermission();
+ useEffect(() => {
+  isMounted.current = true;
 
-    // Função de inicialização SIMPLIFICADA
-    const initializeData = async () => {
-      if (user?.uid) {
-        console.log("🚀 Usuário logado - Firestore como master");
+  const initializeData = async () => {
+    if (user?.uid) {
+      console.log("🚀 Usuário logado - inicializando dados");
 
-        // 1. SEMPRE carregar do Firestore primeiro
-        const success = await loadInitialData(user.uid);
-
-        if (success) {
-          // 2. Depois exibir os dados
-          await loadAllData(true);
-
-          // 3. Sincronizar em background (apenas envia locais que faltam)
-          setTimeout(() => {
-            if (isMounted.current) {
-              safeSyncWithFirebase();
-            }
-          }, 3000);
-        }
-      } else {
-        // Usuário não logado - apenas carrega local
-        await loadAllData(true);
+      // 1. Sincronizar saldos locais com Firestore
+      try {
+        await syncAllBalancesToFirestore(user.uid);
+        console.log("✅ Saldos sincronizados com Firestore");
+      } catch (syncError) {
+        console.warn("⚠️ Erro ao sincronizar saldos:", syncError);
       }
-    };
 
-    // Executa inicialização apenas uma vez
-    if (!hasLoadedInitialData.current) {
-      initializeData();
-      hasLoadedInitialData.current = true;
+      // 2. Carregar dados iniciais
+      const success = await loadInitialData(user.uid);
+
+      if (success) {
+        // 3. Exibir dados
+        await loadAllData(true);
+
+        // 4. Sincronizar em background
+        setTimeout(() => {
+          if (isMounted.current) {
+            safeSyncWithFirebase();
+          }
+        }, 3000);
+      }
+    } else {
+      // Usuário não logado - apenas carrega local
+      await loadAllData(true);
     }
+  };
 
-    return () => {
-      isMounted.current = false;
-      clearSyncTimeout();
-    };
-  }, []);
+  if (!hasLoadedInitialData.current) {
+    initializeData();
+    hasLoadedInitialData.current = true;
+  }
+
+  return () => {
+    isMounted.current = false;
+    clearSyncTimeout();
+  };
+}, []);
+
+// Função para migrar saldo manualmente
+const migrateExistingBalance = async () => {
+  if (!user?.uid) {
+    alert("Faça login primeiro");
+    return;
+  }
+
+  const month = prompt("Digite o mês (ex: 12 para Dezembro):", "12");
+  const year = prompt("Digite o ano (ex: 2024):", "2024");
+  const balance = prompt("Digite o saldo final:", "200");
+
+  if (month && year && balance) {
+    try {
+      const monthNum = parseInt(month);
+      const yearNum = parseInt(year);
+      const balanceNum = parseFloat(balance.replace(',', '.'));
+
+      if (!isNaN(monthNum) && !isNaN(yearNum) && !isNaN(balanceNum)) {
+        await saveMonthEndBalance(monthNum, yearNum, balanceNum, user.uid);
+        
+        alert(`✅ Saldo migrado para Firestore!\n${monthNum}/${yearNum}: R$ ${balanceNum.toFixed(2)}\n\nAgora estará disponível em todos os dispositivos.`);
+        
+        // Recarregar dados
+        await loadAllData(false);
+      }
+    } catch (error) {
+      console.error('❌ Erro na migração:', error);
+      alert('Erro ao migrar saldo. Tente novamente.');
+    }
+  }
+};
 
   // Atualize a função safeSyncWithFirebase:
   const safeSyncWithFirebase = useCallback(async () => {
@@ -876,7 +969,7 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
         fontSize: "12px",
         zIndex: 1000,
         cursor: "not-allowed;", //pointer or not-allowed;
-          opacity: 0
+        opacity: 0,
       }}
     >
       🧪 Testar Firestore
@@ -939,7 +1032,7 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
         fontSize: "12px",
         zIndex: 1000,
         cursor: "not-allowed;", //pointer or not-allowed;
-          opacity: 0
+        opacity: 0,
       }}
     >
       🐛 Debug Auth
@@ -980,7 +1073,7 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
   ============================ */
   useEffect(() => {
     isMounted.current = true;
-    requestNotificationPermission();
+    //requestNotificationPermission();
 
     // Carrega dados iniciais apenas uma vez
     if (!hasLoadedInitialData.current) {
@@ -1011,7 +1104,7 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
   /* ============================
      ADD TO SAFE
   ============================ */
- const addToSafe = useCallback(
+  const addToSafe = useCallback(
     async (amount: number) => {
       if (amount <= 0) {
         alert("Valor deve ser maior que zero");
@@ -1042,18 +1135,21 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
         };
 
         setGoal(updatedGoal);
-        
+
         // Salva no localStorage
         await saveGoal(updatedGoal);
-        
+
         // 🔥 NOVO: Salva no Firestore se estiver logado
         if (user?.uid) {
           try {
-            console.log('🔥 Salvando meta atualizada no Firestore...');
+            console.log("🔥 Salvando meta atualizada no Firestore...");
             await firebaseService.syncGoal(user.uid, updatedGoal);
-            console.log('✅ Meta salva no Firestore');
+            console.log("✅ Meta salva no Firestore");
           } catch (firestoreError) {
-            console.warn('⚠️ Erro ao salvar meta no Firestore:', firestoreError);
+            console.warn(
+              "⚠️ Erro ao salvar meta no Firestore:",
+              firestoreError,
+            );
           }
         }
 
@@ -1111,9 +1207,9 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
 
       if (editingGoal.saved > editingGoal.target) {
         const confirmExceed = window.confirm(
-          `O valor guardado (R$ ${editingGoal.saved.toFixed(2)}) é maior que a nova meta (R$ ${editingGoal.target.toFixed(2)}).\n\nDeseja ajustar o valor guardado para o valor da meta?`
+          `O valor guardado (R$ ${editingGoal.saved.toFixed(2)}) é maior que a nova meta (R$ ${editingGoal.target.toFixed(2)}).\n\nDeseja ajustar o valor guardado para o valor da meta?`,
         );
-        
+
         if (confirmExceed) {
           editingGoal.saved = editingGoal.target;
         } else {
@@ -1122,7 +1218,7 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
       }
 
       setIsLoading(true);
-      
+
       const updatedGoal = {
         ...editingGoal,
         updatedAt: new Date().toISOString(),
@@ -1131,23 +1227,23 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
       // Atualiza localmente
       setGoal(updatedGoal);
       await saveGoal(updatedGoal);
-      
+
       // 🔥 Salva no Firestore se estiver logado
       if (user?.uid) {
         try {
-          console.log('🔥 Salvando meta editada no Firestore...');
+          console.log("🔥 Salvando meta editada no Firestore...");
           await firebaseService.syncGoal(user.uid, updatedGoal);
-          console.log('✅ Meta editada salva no Firestore');
+          console.log("✅ Meta editada salva no Firestore");
         } catch (firestoreError) {
-          console.warn('⚠️ Erro ao salvar meta no Firestore:', firestoreError);
+          console.warn("⚠️ Erro ao salvar meta no Firestore:", firestoreError);
         }
       }
 
       setShowEditGoalModal(false);
-      
+
       // Recarrega dados
       await loadAllData(false);
-      
+
       // Sincroniza se estiver logado
       if (user && !isSyncing) {
         safeSyncWithFirebase();
@@ -1184,9 +1280,9 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
       // Confirmação
       const confirmWithdraw = window.confirm(
         `Tem certeza que deseja retirar R$ ${amount.toFixed(2)} do cofre?\n\n` +
-        `Após a retirada:\n` +
-        `• Saldo no cofre: R$ ${(goal.saved - amount).toFixed(2)}\n` +
-        `• Saldo disponível: R$ ${(total + amount).toFixed(2)}`
+          `Após a retirada:\n` +
+          `• Saldo no cofre: R$ ${(goal.saved - amount).toFixed(2)}\n` +
+          `• Saldo disponível: R$ ${(total + amount).toFixed(2)}`,
       );
 
       if (!confirmWithdraw) return;
@@ -1211,15 +1307,18 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
 
       setGoal(updatedGoal);
       await saveGoal(updatedGoal);
-      
+
       // 🔥 Salva no Firestore se estiver logado
       if (user?.uid) {
         try {
-          console.log('🔥 Salvando retirada no Firestore...');
+          console.log("🔥 Salvando retirada no Firestore...");
           await firebaseService.syncGoal(user.uid, updatedGoal);
-          console.log('✅ Retirada salva no Firestore');
+          console.log("✅ Retirada salva no Firestore");
         } catch (firestoreError) {
-          console.warn('⚠️ Erro ao salvar retirada no Firestore:', firestoreError);
+          console.warn(
+            "⚠️ Erro ao salvar retirada no Firestore:",
+            firestoreError,
+          );
         }
       }
 
@@ -1248,9 +1347,9 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
   const resetGoal = async () => {
     const confirmReset = window.confirm(
       "Tem certeza que deseja resetar sua meta?\n\n" +
-      "• O valor guardado será zerado\n" +
-      "• Você pode manter o nome e valor da meta\n" +
-      "• Esta ação não pode ser desfeita"
+        "• O valor guardado será zerado\n" +
+        "• Você pode manter o nome e valor da meta\n" +
+        "• Esta ação não pode ser desfeita",
     );
 
     if (!confirmReset) return;
@@ -1266,15 +1365,15 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
 
       setGoal(resetGoal);
       await saveGoal(resetGoal);
-      
+
       // 🔥 Salva no Firestore se estiver logado
       if (user?.uid) {
         try {
-          console.log('🔥 Salvando meta resetada no Firestore...');
+          console.log("🔥 Salvando meta resetada no Firestore...");
           await firebaseService.syncGoal(user.uid, resetGoal);
-          console.log('✅ Meta resetada salva no Firestore');
+          console.log("✅ Meta resetada salva no Firestore");
         } catch (firestoreError) {
-          console.warn('⚠️ Erro ao salvar meta no Firestore:', firestoreError);
+          console.warn("⚠️ Erro ao salvar meta no Firestore:", firestoreError);
         }
       }
 
@@ -1294,7 +1393,6 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
       setIsLoading(false);
     }
   };
-
 
   // No Finance.tsx, adicione:
   const forceSync = async () => {
@@ -1496,8 +1594,7 @@ Faltam localmente: ${missingLocally.length}`);
     }
   };
 
-  // CONTINUAÇÃO DO COMPONENTE...
-  // Renderização do componente continua abaixo...
+
 
   return (
     <div style={styles.container}>
@@ -1506,7 +1603,7 @@ Faltam localmente: ${missingLocally.length}`);
         <div style={styles.headerTop}>
           <div style={styles.headerLeft}>
             <h1 style={styles.title}>Finanças Pessoais</h1>
-            <h2>v1.22</h2>
+            <h2>v1.29</h2>
             <div style={styles.date}>
               {today
                 .toLocaleDateString("pt-BR", {
@@ -1593,7 +1690,6 @@ Faltam localmente: ${missingLocally.length}`);
               </div>
             )}
           </div>
-          
         </div>
 
         {user && (
@@ -1609,15 +1705,14 @@ Faltam localmente: ${missingLocally.length}`);
         )}
 
         {/* BOTÃO DE SYNC NO HEADER */}
-      <button
-        onClick={handleManualSync}
-        style={styles.refreshButton}
-        disabled={isSyncing}
-        title="Sincronizar com a nuvem"
-      >
-        {isSyncing ? <div style={styles.miniSpinner}></div> : <Icons.Cloud />}
-      </button>
-
+        <button
+          onClick={handleManualSync}
+          style={styles.refreshButton}
+          disabled={isSyncing}
+          title="Sincronizar com a nuvem"
+        >
+          {isSyncing ? <div style={styles.miniSpinner}></div> : <Icons.Cloud />}
+        </button>
       </div>
 
       {/* STATUS DE SINCRONIZAÇÃO */}
@@ -1642,59 +1737,201 @@ Faltam localmente: ${missingLocally.length}`);
         </div>
       )}
 
-      
-      
-
       {/* SALDO CARD */}
-      <div style={styles.card}>
-        <div style={styles.cardHeader}>
-          <div style={styles.cardIcon}>
-            <Icons.Wallet />
-          </div>
-          <div>
-            <h3 style={styles.cardTitle}>Saldo Disponível</h3>
-            <div style={styles.cardSubtitle}>Mês atual</div>
-          </div>
-        </div>
+  
+{/* SALDO DISPONÍVEL - ATUALIZADO */}
+<div style={styles.card}>
+  <div style={styles.cardHeader}>
+    <div style={styles.cardIcon}>
+      <Icons.Wallet />
+    </div>
+    <div>
+      <h3 style={styles.cardTitle}>Saldo Total Disponível</h3>
+      <div style={styles.cardSubtitle}>
+        {previousMonthBalance > 0 
+          ? `Incluindo saldo acumulado dos meses anteriores`
+          : `Apenas mês atual`}
+      </div>
+    </div>
+  </div>
 
-        <div
-          style={{
-            ...styles.balanceAmount,
-            color: total >= 0 ? "#10b981" : "#ef4444",
-            opacity: isLoading ? 0.7 : 1,
-          }}
-        >
-          {isLoading ? "..." : `R$ ${total.toFixed(2)}`}
-        </div>
+  <div
+    style={{
+      ...styles.balanceAmount,
+      color: availableBalance >= 0 ? "#10b981" : "#ef4444",
+      opacity: isLoading ? 0.7 : 1,
+    }}
+  >
+    {isLoading ? "..." : `R$ ${availableBalance.toFixed(2)}`}
+  </div>
 
-        <div style={styles.balanceInfo}>
-          <div style={styles.balanceItem}>
-            <span style={styles.balanceLabel}>Entradas</span>
-            <span
-              style={{
-                color: "#10b981",
-                fontWeight: "600",
-                opacity: isLoading ? 0.7 : 1,
-              }}
-            >
-              {isLoading ? "..." : `R$ ${monthData.income.toFixed(2)}`}
-            </span>
-          </div>
-          <div style={styles.balanceDivider} />
-          <div style={styles.balanceItem}>
-            <span style={styles.balanceLabel}>Saídas</span>
-            <span
-              style={{
-                color: "#ef4444",
-                fontWeight: "600",
-                opacity: isLoading ? 0.7 : 1,
-              }}
-            >
-              {isLoading ? "..." : `R$ ${monthData.expense.toFixed(2)}`}
-            </span>
-          </div>
+  {/* DETALHAMENTO DO SALDO - SIMILAR AO EXTRATO */}
+  <div style={styles.balanceBreakdown}>
+    {previousMonthBalance > 0 && (
+      <div style={styles.breakdownRow}>
+        <div style={styles.breakdownLabel}>
+          <span style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '12px' }}>📅</span>
+            Acumulado (meses anteriores):
+          </span>
+        </div>
+        <div style={styles.breakdownValue}>
+          + R$ {previousMonthBalance.toFixed(2)}
         </div>
       </div>
+    )}
+    
+    <div style={styles.breakdownRow}>
+      <div style={styles.breakdownLabel}>
+        <span style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ fontSize: '12px' }}>📊</span>
+          {today.getMonth() + 1}/{today.getFullYear()}:
+        </span>
+      </div>
+      <div style={{
+        ...styles.breakdownValue,
+        color: total >= 0 ? '#10b981' : '#ef4444'
+      }}>
+        {total >= 0 ? '+ ' : '- '}R$ {Math.abs(total).toFixed(2)}
+      </div>
+    </div>
+    
+    <div style={{
+      ...styles.breakdownRow,
+      borderTop: '1px solid #334155',
+      paddingTop: '8px',
+      marginTop: '8px',
+      fontWeight: '600'
+    }}>
+      <div style={styles.breakdownLabel}>
+        <span style={{ color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ fontSize: '12px' }}>💰</span>
+          Saldo total:
+        </span>
+      </div>
+      <div style={{
+        ...styles.breakdownValue,
+        color: availableBalance >= 0 ? '#10b981' : '#ef4444',
+        fontSize: '16px'
+      }}>
+        R$ {availableBalance.toFixed(2)}
+      </div>
+    </div>
+  </div>
+
+
+  {/* BOTÃO PARA ADICIONAR SALDO ANTERIOR (se necessário) */}
+  {showAddPreviousBalance && (
+    <div style={{
+      marginTop: '12px',
+      padding: '10px',
+      background: 'rgba(59, 130, 246, 0.1)',
+      border: '1px solid #3b82f6',
+      borderRadius: '8px',
+      textAlign: 'center' as const
+    }}>
+      <div style={{ color: '#cbd5e1', fontSize: '13px', marginBottom: '8px' }}>
+        ⚠️ Início do mês detectado
+      </div>
+      <button
+  onClick={migrateExistingBalance}
+  style={{
+    position: 'fixed',
+    bottom: '160px',
+    left: '20px',
+    padding: '10px',
+    background: '#8b5cf6',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '12px',
+    zIndex: 1000,
+    cursor: 'pointer',
+    opacity: 0.8
+  }}
+>
+  🚀 Migrar para Firestore
+</button>
+    </div>
+  )}
+  <button
+  onClick={saveSpecificMonthBalance}
+  style={{
+    position: 'fixed',
+    bottom: '120px',
+    left: '20px',
+    padding: '10px',
+    background: '#8b5cf6',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '12px',
+    zIndex: 1000,
+    cursor: 'pointer',
+    opacity: 0.7
+  }}
+>
+  💾 Salvar mês específico
+</button>
+</div>
+
+{/* RESUMO DO MÊS ATUAL */}
+<div style={{
+  ...styles.card,
+  marginTop: '12px',
+  background: 'rgba(30, 41, 59, 0.5)',
+  border: '1px solid #334155'
+}}>
+  <div style={styles.cardHeader}>
+    <div style={{
+      ...styles.cardIcon,
+      background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+      width: '36px',
+      height: '36px'
+    }}>
+      <Icons.Calendar />
+    </div>
+    <div>
+      <h3 style={{...styles.cardTitle, fontSize: '16px'}}>Resumo do Mês</h3>
+      <div style={{...styles.cardSubtitle, fontSize: '12px'}}>
+        {today.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+      </div>
+    </div>
+  </div>
+
+  <div style={styles.balanceInfo}>
+    <div style={styles.balanceItem}>
+      <span style={styles.balanceLabel}>Entradas</span>
+      <span style={{ color: "#10b981", fontWeight: "600", fontSize: '14px' }}>
+        R$ {monthData.income.toFixed(2)}
+      </span>
+    </div>
+    <div style={styles.balanceDivider} />
+    <div style={styles.balanceItem}>
+      <span style={styles.balanceLabel}>Saídas</span>
+      <span style={{ color: "#ef4444", fontWeight: "600", fontSize: '14px' }}>
+        R$ {monthData.expense.toFixed(2)}
+      </span>
+    </div>
+  </div>
+  
+  <div style={{
+    ...styles.balanceItem,
+    justifyContent: 'center',
+    marginTop: '12px',
+    paddingTop: '12px',
+    borderTop: '1px solid #334155'
+  }}>
+    <span style={{...styles.balanceLabel, fontSize: '14px'}}>Saldo do mês</span>
+    <span style={{ 
+      color: total >= 0 ? "#10b981" : "#ef4444", 
+      fontWeight: "600",
+      fontSize: '16px'
+    }}>
+      R$ {total.toFixed(2)}
+    </span>
+  </div>
+</div>
 
       {/* COFRE CARD - ATUALIZADO COM NOVOS BOTÕES */}
       <div style={styles.card}>
@@ -1721,7 +1958,7 @@ Faltam localmente: ${missingLocally.length}`);
               >
                 <Icons.Edit />
               </button>
-              
+
               {/* BOTÃO RETIRAR */}
               {goal.saved > 0 && (
                 <button
@@ -1735,7 +1972,7 @@ Faltam localmente: ${missingLocally.length}`);
                   <Icons.Withdraw />
                 </button>
               )}
-              
+
               {/* BOTÃO RESETAR */}
               <button
                 onClick={resetGoal}
@@ -1750,7 +1987,6 @@ Faltam localmente: ${missingLocally.length}`);
             </div>
           </div>
         </div>
-
 
         {/* PROGRESSO */}
         <div style={styles.progressSection}>
@@ -1803,9 +2039,11 @@ Faltam localmente: ${missingLocally.length}`);
             <div style={styles.quickActionsLabel}>Adicionar valor:</div>
             <button
               onClick={() => {
-                const customAmount = prompt("Digite o valor para adicionar ao cofre:");
+                const customAmount = prompt(
+                  "Digite o valor para adicionar ao cofre:",
+                );
                 if (customAmount) {
-                  const amount = parseFloat(customAmount.replace(',', '.'));
+                  const amount = parseFloat(customAmount.replace(",", "."));
                   if (!isNaN(amount) && amount > 0) {
                     addToSafe(amount);
                   } else {
@@ -1819,7 +2057,7 @@ Faltam localmente: ${missingLocally.length}`);
               + Valor personalizado
             </button>
           </div>
-          
+
           <div style={styles.quickActionsGrid}>
             {[10, 50, 100, 500, 1000, 5000].map((value) => (
               <button
@@ -1852,38 +2090,52 @@ Faltam localmente: ${missingLocally.length}`);
               <div style={styles.modalIcon}>✏️</div>
               <h3 style={styles.modalTitle}>Editar Meta</h3>
             </div>
-            
+
             <div style={styles.modalBody}>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Nome da Meta</label>
                 <input
                   type="text"
                   value={editingGoal.name}
-                  onChange={(e) => setEditingGoal({...editingGoal, name: e.target.value})}
+                  onChange={(e) =>
+                    setEditingGoal({ ...editingGoal, name: e.target.value })
+                  }
                   style={styles.formInput}
                   placeholder="Ex: PC Gamer, Viagem, Carro..."
                 />
               </div>
-              
+
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Valor da Meta (R$)</label>
                 <input
                   type="number"
                   value={editingGoal.target}
-                  onChange={(e) => setEditingGoal({...editingGoal, target: parseFloat(e.target.value) || 0})}
+                  onChange={(e) =>
+                    setEditingGoal({
+                      ...editingGoal,
+                      target: parseFloat(e.target.value) || 0,
+                    })
+                  }
                   style={styles.formInput}
                   min="1"
                   step="0.01"
                   placeholder="0.00"
                 />
               </div>
-              
+
               <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Valor Atual Guardado (R$)</label>
+                <label style={styles.formLabel}>
+                  Valor Atual Guardado (R$)
+                </label>
                 <input
                   type="number"
                   value={editingGoal.saved}
-                  onChange={(e) => setEditingGoal({...editingGoal, saved: parseFloat(e.target.value) || 0})}
+                  onChange={(e) =>
+                    setEditingGoal({
+                      ...editingGoal,
+                      saved: parseFloat(e.target.value) || 0,
+                    })
+                  }
                   style={styles.formInput}
                   min="0"
                   max={editingGoal.target}
@@ -1894,7 +2146,7 @@ Faltam localmente: ${missingLocally.length}`);
                   Máximo: R$ {editingGoal.target.toFixed(2)}
                 </div>
               </div>
-              
+
               <div style={styles.modalActions}>
                 <button
                   onClick={() => setShowEditGoalModal(false)}
@@ -1908,7 +2160,7 @@ Faltam localmente: ${missingLocally.length}`);
                   style={styles.modalConfirm}
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Salvando...' : 'Salvar Alterações'}
+                  {isLoading ? "Salvando..." : "Salvar Alterações"}
                 </button>
               </div>
             </div>
@@ -1924,19 +2176,23 @@ Faltam localmente: ${missingLocally.length}`);
               <div style={styles.modalIcon}>💰</div>
               <h3 style={styles.modalTitle}>Retirar do Cofre</h3>
             </div>
-            
+
             <div style={styles.modalBody}>
               <div style={styles.withdrawInfo}>
                 <div style={styles.withdrawInfoItem}>
                   <span>Saldo no cofre:</span>
-                  <span style={styles.withdrawAmount}>R$ {goal.saved.toFixed(2)}</span>
+                  <span style={styles.withdrawAmount}>
+                    R$ {goal.saved.toFixed(2)}
+                  </span>
                 </div>
                 <div style={styles.withdrawInfoItem}>
                   <span>Saldo disponível:</span>
-                  <span style={styles.withdrawAmount}>R$ {total.toFixed(2)}</span>
+                  <span style={styles.withdrawAmount}>
+                    R$ {total.toFixed(2)}
+                  </span>
                 </div>
               </div>
-              
+
               <div style={styles.withdrawQuickValues}>
                 <div style={styles.withdrawQuickLabel}>Valores rápidos:</div>
                 <div style={styles.withdrawQuickGrid}>
@@ -1946,9 +2202,10 @@ Faltam localmente: ${missingLocally.length}`);
                       onClick={() => withdrawFromSafe(value)}
                       style={{
                         ...styles.withdrawQuickButton,
-                        background: value <= goal.saved
-                          ? "linear-gradient(135deg, #f59e0b, #d97706)"
-                          : "#94a3b8",
+                        background:
+                          value <= goal.saved
+                            ? "linear-gradient(135deg, #f59e0b, #d97706)"
+                            : "#94a3b8",
                         cursor: value <= goal.saved ? "pointer" : "not-allowed",
                         opacity: value <= goal.saved ? 1 : 0.6,
                       }}
@@ -1959,7 +2216,7 @@ Faltam localmente: ${missingLocally.length}`);
                   ))}
                 </div>
               </div>
-              
+
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Valor personalizado (R$)</label>
                 <div style={styles.withdrawCustom}>
@@ -1974,12 +2231,20 @@ Faltam localmente: ${missingLocally.length}`);
                   />
                   <button
                     onClick={() => {
-                      const input = document.getElementById('customWithdrawAmount') as HTMLInputElement;
-                      const amount = parseFloat(input.value.replace(',', '.'));
-                      if (!isNaN(amount) && amount > 0 && amount <= goal.saved) {
+                      const input = document.getElementById(
+                        "customWithdrawAmount",
+                      ) as HTMLInputElement;
+                      const amount = parseFloat(input.value.replace(",", "."));
+                      if (
+                        !isNaN(amount) &&
+                        amount > 0 &&
+                        amount <= goal.saved
+                      ) {
                         withdrawFromSafe(amount);
                       } else {
-                        alert(`Valor inválido. Digite um valor entre R$ 0,01 e R$ ${goal.saved.toFixed(2)}`);
+                        alert(
+                          `Valor inválido. Digite um valor entre R$ 0,01 e R$ ${goal.saved.toFixed(2)}`,
+                        );
                       }
                     }}
                     style={styles.withdrawCustomButton}
@@ -1988,7 +2253,7 @@ Faltam localmente: ${missingLocally.length}`);
                   </button>
                 </div>
               </div>
-              
+
               <div style={styles.modalActions}>
                 <button
                   onClick={() => setShowWithdrawModal(false)}
@@ -2005,14 +2270,13 @@ Faltam localmente: ${missingLocally.length}`);
                   }}
                   disabled={isLoading || goal.saved <= 0}
                 >
-                  {isLoading ? 'Processando...' : 'Retirar Tudo'}
+                  {isLoading ? "Processando..." : "Retirar Tudo"}
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
-
 
       <button
         onClick={checkFirestoreData}
@@ -2028,7 +2292,7 @@ Faltam localmente: ${missingLocally.length}`);
           fontSize: "12px",
           zIndex: 1000,
           cursor: "not-allowed;", //pointer or not-allowed;
-          opacity: 0
+          opacity: 0,
         }}
       >
         👁️ Ver Firestore
@@ -2048,7 +2312,7 @@ Faltam localmente: ${missingLocally.length}`);
           fontSize: "12px",
           zIndex: 1000,
           cursor: "not-allowed;", //pointer or not-allowed;
-          opacity: 0
+          opacity: 0,
         }}
       >
         🔄 Reset Firestore
@@ -2112,6 +2376,24 @@ Faltam localmente: ${missingLocally.length}`);
           </div>
         )}
 
+        <div style={styles.navCard} onClick={() => navigate("/categories")}>
+          <div
+            style={{
+              ...styles.navIcon,
+              background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+            }}
+          >
+            <Icons.Category />
+          </div>
+          <div style={styles.navContent}>
+            <h4 style={styles.navTitle}>Categorias</h4>
+            <p style={styles.navDescription}>Gerenciar suas categorias</p>
+          </div>
+          <div style={styles.navArrow}>
+            <Icons.ArrowRight />
+          </div>
+        </div>
+
         {user && (
           <div
             style={styles.navCard}
@@ -2137,6 +2419,8 @@ Faltam localmente: ${missingLocally.length}`);
             </div>
           </div>
         )}
+
+        
       </div>
 
       {/* INFO BOX */}
@@ -2259,7 +2543,7 @@ Faltam localmente: ${missingLocally.length}`);
           fontSize: "12px",
           zIndex: 1000,
           cursor: "not-allowed;", //pointer or not-allowed;
-          opacity: 0
+          opacity: 0,
         }}
       >
         🔍 Debug Firestore
@@ -2280,7 +2564,7 @@ Faltam localmente: ${missingLocally.length}`);
           fontSize: "12px",
           zIndex: 1000,
           cursor: "not-allowed;", //pointer or not-allowed;
-          opacity: 0
+          opacity: 0,
         }}
       >
         {isSyncing ? "⏳ Sincronizando..." : "🚀 Forçar Sync"}
@@ -2845,142 +3129,169 @@ const styles = {
   },
 
   goalHeaderContent: {
-    display: 'flex' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
+    display: "flex" as const,
+    justifyContent: "space-between" as const,
+    alignItems: "center" as const,
     flex: 1,
   },
 
   goalActions: {
-    display: 'flex' as const,
-    gap: '8px',
+    display: "flex" as const,
+    gap: "8px",
   },
 
   iconButton: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '50%',
-    border: 'none',
-    background: 'linear-gradient(135deg, #6b7280, #4b5563)',
-    color: 'white',
-    display: 'flex' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    width: "36px",
+    height: "36px",
+    borderRadius: "50%",
+    border: "none",
+    background: "linear-gradient(135deg, #6b7280, #4b5563)",
+    color: "white",
+    display: "flex" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
   },
 
   quickActionsHeader: {
-    display: 'flex' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
-    marginBottom: '12px',
+    display: "flex" as const,
+    justifyContent: "space-between" as const,
+    alignItems: "center" as const,
+    marginBottom: "12px",
   },
 
   customAmountButton: {
-    padding: '8px 12px',
-    background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '12px',
-    fontWeight: '600' as const,
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    padding: "8px 12px",
+    background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    fontSize: "12px",
+    fontWeight: "600" as const,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
   },
 
   formGroup: {
-    marginBottom: '16px',
+    marginBottom: "16px",
   },
 
   formLabel: {
-    display: 'block' as const,
-    fontSize: '14px',
-    fontWeight: '600' as const,
-    color: '#f8fafc',
-    marginBottom: '8px',
+    display: "block" as const,
+    fontSize: "14px",
+    fontWeight: "600" as const,
+    color: "#f8fafc",
+    marginBottom: "8px",
   },
 
   formInput: {
-    width: '100%',
-    padding: '12px',
-    background: '#0f172a',
-    border: '1px solid #334155',
-    borderRadius: '8px',
-    color: '#f8fafc',
-    fontSize: '15px',
+    width: "100%",
+    padding: "12px",
+    background: "#0f172a",
+    border: "1px solid #334155",
+    borderRadius: "8px",
+    color: "#f8fafc",
+    fontSize: "15px",
   },
 
   formHelp: {
-    fontSize: '12px',
-    color: '#94a3b8',
-    marginTop: '4px',
+    fontSize: "12px",
+    color: "#94a3b8",
+    marginTop: "4px",
   },
 
   withdrawInfo: {
-    background: '#0f172a',
-    borderRadius: '12px',
-    padding: '16px',
-    marginBottom: '20px',
+    background: "#0f172a",
+    borderRadius: "12px",
+    padding: "16px",
+    marginBottom: "20px",
   },
 
   withdrawInfoItem: {
-    display: 'flex' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
-    marginBottom: '8px',
-    fontSize: '14px',
-    color: '#cbd5e1',
+    display: "flex" as const,
+    justifyContent: "space-between" as const,
+    alignItems: "center" as const,
+    marginBottom: "8px",
+    fontSize: "14px",
+    color: "#cbd5e1",
   },
 
   withdrawAmount: {
-    fontSize: '16px',
-    fontWeight: '600' as const,
-    color: '#10b981',
+    fontSize: "16px",
+    fontWeight: "600" as const,
+    color: "#10b981",
   },
 
   withdrawQuickValues: {
-    marginBottom: '20px',
+    marginBottom: "20px",
   },
 
   withdrawQuickLabel: {
-    fontSize: '14px',
-    fontWeight: '600' as const,
-    color: '#f8fafc',
-    marginBottom: '12px',
+    fontSize: "14px",
+    fontWeight: "600" as const,
+    color: "#f8fafc",
+    marginBottom: "12px",
   },
 
   withdrawQuickGrid: {
-    display: 'grid' as const,
-    gridTemplateColumns: 'repeat(5, 1fr)',
-    gap: '8px',
+    display: "grid" as const,
+    gridTemplateColumns: "repeat(5, 1fr)",
+    gap: "8px",
   },
 
   withdrawQuickButton: {
-    padding: '10px 8px',
-    border: 'none',
-    borderRadius: '8px',
-    color: 'white',
-    fontSize: '13px',
-    fontWeight: '600' as const,
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    padding: "10px 8px",
+    border: "none",
+    borderRadius: "8px",
+    color: "white",
+    fontSize: "13px",
+    fontWeight: "600" as const,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
   },
 
   withdrawCustom: {
-    display: 'flex' as const,
-    gap: '8px',
+    display: "flex" as const,
+    gap: "8px",
   },
 
   withdrawCustomButton: {
-    padding: '12px 16px',
-    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '14px',
-    fontWeight: '600' as const,
-    cursor: 'pointer',
-    whiteSpace: 'nowrap' as const,
+    padding: "12px 16px",
+    background: "linear-gradient(135deg, #f59e0b, #d97706)",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    fontSize: "14px",
+    fontWeight: "600" as const,
+    cursor: "pointer",
+    whiteSpace: "nowrap" as const,
   },
+
+  // Adicione ao objeto styles:
+
+balanceBreakdown: {
+  background: '#0f172a',
+  borderRadius: '8px',
+  padding: '12px',
+  marginTop: '12px',
+  border: '1px solid #334155'
+},
+
+breakdownRow: {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: '6px',
+  fontSize: '14px'
+},
+
+breakdownLabel: {
+  color: '#cbd5e1'
+},
+
+breakdownValue: {
+  color: '#f8fafc',
+  fontWeight: '500'
+},
 };

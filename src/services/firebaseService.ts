@@ -332,7 +332,8 @@ export const firebaseService = {
   syncTransactions,
   syncGoal,
   addTransaction,
-  getCurrentUser
+  getCurrentUser,
+  getFirestoreDb,
 };
 
 // ============================
@@ -393,6 +394,8 @@ export const checkFirebaseConnection = async (): Promise<boolean> => {
     return false;
   }
 };
+
+
 
 // ============================
 // INICIALIZAÇÃO AUTOMÁTICA

@@ -1,8 +1,8 @@
 //src/pages/AddTransactions.tsx
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { addTransaction } from '../services/financeService'
 import { useNavigate } from 'react-router-dom'
-
+import { getCategories, addCategory, type Category,  } from '../services/categoryService'
 
 
 // Ícones
@@ -58,15 +58,6 @@ const Icons = {
   )
 }
 
-// Categorias organizadas por tipo
-const expenseCategories = [
-  'Jogos', 'Comida', 'Roupa', 'Cabelo', 'Lazer',
-  'Computador', 'Pink', 'Mãe', 'Cofre', 'Outros'
-]
-
-const incomeCategories = [
-  'Salário', 'Freelance', 'Investimentos', 'Presente', 'Reembolso', 'Outros'
-]
 
 export default function AddTransaction() {
   const navigate = useNavigate()
@@ -77,9 +68,76 @@ export default function AddTransaction() {
   const [description, setDescription] = useState('')
   const [customDate, setCustomDate] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [newCategoryColor, setNewCategoryColor] = useState('#3b82f6')
+  const [isAddingCategory, setIsAddingCategory] = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [filteredCategories, setFilteredCategories] = useState<Category[]>([])
 
-  // Categorias baseadas no tipo
-  const currentCategories = type === 'income' ? incomeCategories : expenseCategories
+
+  useEffect(() => {
+    loadCategories()
+  }, [type])
+
+  const loadCategories = async () => {
+    try {
+      const cats = await getCategories(type)
+      setCategories(cats)
+      
+      // Filtrar e ordenar por ordem
+      const filtered = cats
+        .filter(cat => cat.type === type)
+        .sort((a, b) => (a.order || 999) - (b.order || 999))
+      
+      setFilteredCategories(filtered)
+      
+      // Definir categoria padrão se não houver selecionada
+      if (filtered.length > 0 && !category) {
+        const defaultCategory = filtered.find(cat => cat.name === 'Outros') || filtered[0]
+        setCategory(defaultCategory.name)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error)
+    }
+  }
+
+  // Função para adicionar nova categoria
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      alert('Digite um nome para a categoria')
+      return
+    }
+
+    setIsAddingCategory(true)
+    try {
+      const newCategory = await addCategory({
+        name: newCategoryName.trim(),
+        type: type,
+        color: newCategoryColor,
+        order: categories.filter(c => c.type === type).length + 1
+      })
+
+      // Atualizar lista de categorias
+      await loadCategories()
+      
+      // Selecionar a nova categoria
+      setCategory(newCategory.name)
+      
+      // Fechar modal e limpar formulário
+      setShowAddCategoryModal(false)
+      setNewCategoryName('')
+      setNewCategoryColor('#3b82f6')
+      
+      alert(`✅ Categoria "${newCategory.name}" adicionada com sucesso!`)
+    } catch (error) {
+      console.error('Erro ao adicionar categoria:', error)
+      alert(error instanceof Error ? error.message : 'Erro ao adicionar categoria')
+    } finally {
+      setIsAddingCategory(false)
+    }
+  }
+
 
   // Função de debug para testar storage
   const testStorage = async () => {
@@ -137,7 +195,6 @@ export default function AddTransaction() {
     setIsLoading(true)
 
     try {
-      // Usar data customizada ou atual
       const dateToUse = customDate 
         ? new Date(customDate + 'T12:00:00').toISOString()
         : new Date().toISOString()
@@ -160,7 +217,6 @@ export default function AddTransaction() {
 
       console.log('✅ Transação salva com sucesso!');
 
-      // Feedback visual antes de navegar
       setTimeout(() => {
         navigate('/')
       }, 300)
@@ -172,7 +228,6 @@ export default function AddTransaction() {
     }
   }
 
-  // Formatar data atual para input
   const today = new Date().toISOString().split('T')[0]
 
   return (
@@ -310,37 +365,58 @@ export default function AddTransaction() {
           </div>
         </div>
 
-        {/* CATEGORIA */}
+        {/* CATEGORIA - ATUALIZADO */}
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
             <div style={{ ...styles.sectionIcon, background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
               <Icons.Category />
             </div>
-            <h3 style={styles.sectionTitle}>Categoria</h3>
+            <div style={styles.sectionHeaderContent}>
+              <h3 style={styles.sectionTitle}>Categoria</h3>
+              <button
+                onClick={() => setShowAddCategoryModal(true)}
+                style={styles.addCategoryButton}
+                type="button"
+                disabled={isLoading}
+                title="Adicionar nova categoria"
+              >
+                + Nova
+              </button>
+            </div>
           </div>
           
           <div style={styles.selectedCategory}>
             <span style={styles.selectedCategoryLabel}>Selecionada:</span>
-            <span style={styles.selectedCategoryValue}>{category}</span>
+            <span style={{
+              ...styles.selectedCategoryValue,
+              color: filteredCategories.find(c => c.name === category)?.color || '#3b82f6'
+            }}>
+              {category}
+            </span>
           </div>
           
           <div style={styles.categoriesGrid}>
-            {currentCategories.map((cat) => (
+            {filteredCategories.map((cat) => (
               <button
-                key={cat}
+                key={cat.id}
                 type="button"
-                onClick={() => setCategory(cat)}
+                onClick={() => setCategory(cat.name)}
                 style={{
                   ...styles.categoryButton,
-                  background: category === cat 
-                    ? 'linear-gradient(135deg, #3b82f6, #2563eb)' 
+                  background: category === cat.name 
+                    ? (cat.color || '#3b82f6')
                     : '#0f172a',
-                  border: category === cat ? 'none' : '1px solid #334155'
+                  border: category === cat.name ? 'none' : `1px solid ${cat.color || '#334155'}`,
+                  color: category === cat.name ? 'white' : (cat.color || '#f8fafc')
                 }}
                 disabled={isLoading}
-                aria-pressed={category === cat}
+                aria-pressed={category === cat.name}
+                title={cat.isDefault ? 'Categoria padrão' : 'Categoria personalizada'}
               >
-                {cat}
+                {cat.name}
+                {cat.isDefault && (
+                  <span style={styles.defaultBadge}>✓</span>
+                )}
               </button>
             ))}
           </div>
@@ -371,6 +447,104 @@ export default function AddTransaction() {
           />
         </div>
       </div>
+
+      {/* MODAL ADICIONAR CATEGORIA */}
+      {showAddCategoryModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalHeader}>
+              <div style={styles.modalIcon}>🏷️</div>
+              <div>
+                <h3 style={styles.modalTitle}>Nova Categoria</h3>
+                <div style={styles.modalSubtitle}>
+                  Adicionar categoria de {type === 'income' ? 'entrada' : 'gasto'}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowAddCategoryModal(false)
+                  setNewCategoryName('')
+                  setNewCategoryColor('#3b82f6')
+                }}
+                style={styles.modalCloseButton}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div style={styles.modalBody}>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Nome da Categoria</label>
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder={`Ex: ${type === 'income' ? 'Bônus, Dividendos' : 'Transporte, Saúde'}...`}
+                  style={styles.formInput}
+                  autoFocus
+                  maxLength={20}
+                />
+                <div style={styles.formHelp}>
+                  Máximo: 20 caracteres
+                </div>
+              </div>
+              
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Cor</label>
+                <div style={styles.colorPicker}>
+                  {[
+                    '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
+                    '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'
+                  ].map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setNewCategoryColor(color)}
+                      style={{
+                        ...styles.colorOption,
+                        background: color,
+                        border: newCategoryColor === color ? '3px solid white' : 'none',
+                        transform: newCategoryColor === color ? 'scale(1.1)' : 'scale(1)'
+                      }}
+                      title={color}
+                    />
+                  ))}
+                </div>
+                <div style={styles.selectedColor}>
+                  Cor selecionada: <span style={{ color: newCategoryColor }}>●</span>
+                </div>
+              </div>
+              
+              <div style={styles.modalActions}>
+                <button
+                  onClick={() => {
+                    setShowAddCategoryModal(false)
+                    setNewCategoryName('')
+                    setNewCategoryColor('#3b82f6')
+                  }}
+                  style={styles.modalCancel}
+                  disabled={isAddingCategory}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleAddCategory}
+                  style={{
+                    ...styles.modalConfirm,
+                    background: newCategoryColor,
+                    opacity: !newCategoryName.trim() ? 0.6 : 1,
+                    cursor: !newCategoryName.trim() ? 'not-allowed' : 'pointer'
+                  }}
+                  disabled={!newCategoryName.trim() || isAddingCategory}
+                >
+                  {isAddingCategory ? 'Adicionando...' : 'Adicionar Categoria'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* BOTÕES DE AÇÃO */}
       <div style={styles.actionButtons}>
@@ -744,7 +918,190 @@ const styles = {
     fontSize: '16px',
     color: '#f8fafc',
     fontWeight: '500'
-  }
+  },
+
+  sectionHeaderContent: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%'
+  },
+
+  addCategoryButton: {
+    padding: '6px 12px',
+    background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+    border: 'none',
+    borderRadius: '8px',
+    color: 'white',
+    fontSize: '12px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  },
+
+  defaultBadge: {
+    fontSize: '10px',
+    marginLeft: '4px',
+    opacity: 0.8
+  },
+
+  // Modal styles
+  modalOverlay: {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(15, 23, 42, 0.95)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2000,
+    backdropFilter: 'blur(4px)',
+    padding: '20px'
+  },
+
+  modalContent: {
+    background: '#1e293b',
+    borderRadius: '20px',
+    padding: '24px',
+    width: '100%',
+    maxWidth: '400px',
+    border: '1px solid #334155',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)'
+  },
+
+  modalHeader: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    marginBottom: '24px',
+    position: 'relative' as const
+  },
+
+  modalIcon: {
+    fontSize: '32px',
+    marginRight: '12px',
+    marginTop: '2px'
+  },
+
+  modalTitle: {
+    fontSize: '20px',
+    fontWeight: '600' as const,
+    color: '#f8fafc',
+    margin: 0,
+    marginBottom: '4px'
+  },
+
+  modalSubtitle: {
+    fontSize: '14px',
+    color: '#94a3b8'
+  },
+
+  modalCloseButton: {
+    position: 'absolute' as const,
+    top: '0',
+    right: '0',
+    background: 'transparent',
+    border: 'none',
+    color: '#94a3b8',
+    fontSize: '24px',
+    cursor: 'pointer',
+    width: '32px',
+    height: '32px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '50%',
+    transition: 'all 0.2s ease'
+  },
+
+  modalBody: {
+    marginBottom: '20px'
+  },
+
+  formGroup: {
+    marginBottom: '20px'
+  },
+
+  formLabel: {
+    display: 'block' as const,
+    fontSize: '14px',
+    fontWeight: '600' as const,
+    color: '#f8fafc',
+    marginBottom: '8px'
+  },
+
+  formInput: {
+    width: '100%',
+    padding: '12px 16px',
+    background: '#0f172a',
+    border: '1px solid #334155',
+    borderRadius: '12px',
+    color: '#f8fafc',
+    fontSize: '15px',
+    outline: 'none',
+    transition: 'all 0.2s ease'
+  },
+
+  formHelp: {
+    fontSize: '12px',
+    color: '#94a3b8',
+    marginTop: '4px'
+  },
+
+  colorPicker: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: '8px',
+    marginBottom: '12px'
+  },
+
+  colorOption: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  },
+
+  selectedColor: {
+    fontSize: '13px',
+    color: '#94a3b8',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+
+  modalActions: {
+    display: 'flex',
+    gap: '12px'
+  },
+
+  modalCancel: {
+    flex: 1,
+    padding: '12px',
+    border: '1px solid #334155',
+    background: 'transparent',
+    color: '#94a3b8',
+    borderRadius: '12px',
+    fontSize: '15px',
+    fontWeight: '600' as const,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  },
+
+  modalConfirm: {
+    flex: 1,
+    padding: '12px',
+    border: 'none',
+    color: 'white',
+    borderRadius: '12px',
+    fontSize: '15px',
+    fontWeight: '600' as const,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  },
 }
 
 // Adicionar animação
