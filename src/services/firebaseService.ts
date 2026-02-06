@@ -13,17 +13,11 @@ import {
 } from 'firebase/firestore';
 import { getAuth, type Auth } from 'firebase/auth';
 import type { Transaction, Goal } from './storageService';
+import { firebaseConfig } from '../config/firebaseConfig';
 
 // Configuração do Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyAJPxldozWGXPtjdYs4vFWEfv3-9PZqVwQ",
-  authDomain: "fletnote.firebaseapp.com",
-  projectId: "fletnote",
-  storageBucket: "fletnote.firebasestorage.app",
-  messagingSenderId: "436047979950",
-  appId: "1:436047979950:web:08fb16c668eaf557d7d43f",
-  measurementId: "G-1CV80ZBK4H"
-};
+initializeApp(firebaseConfig);
+
 
 // Variáveis globais
 let app: FirebaseApp | undefined;

@@ -8,6 +8,7 @@ import {
 } from './storageService';
 import { firebaseService } from './firebaseService'; 
 
+
 export type Transaction = {
   id?: number | string;
   type: 'income' | 'expense';
