@@ -1603,7 +1603,7 @@ Faltam localmente: ${missingLocally.length}`);
         <div style={styles.headerTop}>
           <div style={styles.headerLeft}>
             <h1 style={styles.title}>Finanças Pessoais</h1>
-            <h2>v1.29</h2>
+            <h2>v1.33</h2>
             <div style={styles.date}>
               {today
                 .toLocaleDateString("pt-BR", {
@@ -2355,6 +2355,25 @@ Faltam localmente: ${missingLocally.length}`);
             <Icons.ArrowRight />
           </div>
         </div>
+
+       
+<div style={styles.navCard} onClick={() => navigate("/recurring")}>
+  <div
+    style={{
+      ...styles.navIcon,
+      background: "linear-gradient(135deg, #f59e0b, #d97706)",
+    }}
+  >
+    <Icons.Calendar />
+  </div>
+  <div style={styles.navContent}>
+    <h4 style={styles.navTitle}>Gastos Fixos</h4>
+    <p style={styles.navDescription}>Gerencie contas recorrentes</p>
+  </div>
+  <div style={styles.navArrow}>
+    <Icons.ArrowRight />
+  </div>
+</div>
 
         {!user && (
           <div style={styles.navCard} onClick={() => navigate("/login")}>
