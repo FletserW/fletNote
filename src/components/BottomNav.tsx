@@ -3,14 +3,14 @@ import { NavLink } from 'react-router-dom'
 // Ícones SVG
 const Icons = {
   Wallet: ({ active }: { active: boolean }) => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? "#3b82f6" : "#94a3b8"} strokeWidth="2">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? "var(--app-primary)" : "var(--app-text-muted)"} strokeWidth="2">
       <path d="M21 12V7H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14v4" />
       <path d="M3 9v9a2 2 0 0 0 2 2h16v-5" />
       <path d="M18 12h.01" />
     </svg>
   ),
   Calendar: ({ active }: { active: boolean }) => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? "#3b82f6" : "#94a3b8"} strokeWidth="2">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? "var(--app-primary)" : "var(--app-text-muted)"} strokeWidth="2">
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
       <line x1="16" y1="2" x2="16" y2="6" />
       <line x1="8" y1="2" x2="8" y2="6" />
@@ -18,14 +18,14 @@ const Icons = {
     </svg>
   ),
   Chart: ({ active }: { active: boolean }) => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? "#3b82f6" : "#94a3b8"} strokeWidth="2">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? "var(--app-primary)" : "var(--app-text-muted)"} strokeWidth="2">
       <line x1="18" y1="20" x2="18" y2="10" />
       <line x1="12" y1="20" x2="12" y2="4" />
       <line x1="6" y1="20" x2="6" y2="14" />
     </svg>
   ),
   PiggyBank: ({ active }: { active: boolean }) => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? "#3b82f6" : "#94a3b8"} strokeWidth="2">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? "var(--app-primary)" : "var(--app-text-muted)"} strokeWidth="2">
       <path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h12v-3.5c1.2-1.3 2-2.5 2-4.5 0-2.5-2.5-4-5-4z" />
       <path d="M12 9v6" />
       <path d="M15 12h-6" />
@@ -52,7 +52,7 @@ export default function BottomNav() {
             </div>
             <span style={{
               ...styles.label,
-              color: isActive ? '#3b82f6' : '#94a3b8'
+              color: isActive ? 'var(--app-primary)' : 'var(--app-text-muted)'
             }}>
               Financeiro
             </span>
@@ -76,7 +76,7 @@ export default function BottomNav() {
             </div>
             <span style={{
               ...styles.label,
-              color: isActive ? '#3b82f6' : '#94a3b8'
+              color: isActive ? 'var(--app-primary)' : 'var(--app-text-muted)'
             }}>
               Extrato
             </span>
@@ -103,7 +103,7 @@ export default function BottomNav() {
             </div>
             <span style={{
               ...styles.label,
-              color: isActive ? '#3b82f6' : '#94a3b8'
+              color: isActive ? 'var(--app-primary)' : 'var(--app-text-muted)'
             }}>
               Anual
             </span>
@@ -127,7 +127,7 @@ export default function BottomNav() {
             </div>
             <span style={{
               ...styles.label,
-              color: isActive ? '#3b82f6' : '#94a3b8'
+              color: isActive ? 'var(--app-primary)' : 'var(--app-text-muted)'
             }}>
               Folgas
             </span>
@@ -147,15 +147,15 @@ const styles = {
     left: 0,
     right: 0,
     height: '72px',
-    background: '#1e293b',
-    borderTop: '1px solid #334155',
+    background: 'var(--app-surface-elevated)',
+    borderTop: '1px solid var(--app-border)',
     display: 'flex',
     justifyContent: 'space-around',
     alignItems: 'center',
     padding: '0 16px',
     backdropFilter: 'blur(10px)',
     zIndex: 1000,
-    boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.3)'
+    boxShadow: 'var(--app-shadow)'
   },
   
   navItem: {
@@ -174,7 +174,7 @@ const styles = {
   },
   
   navItemActive: {
-    background: 'rgba(59, 130, 246, 0.1)'
+    background: 'var(--app-primary-soft)'
   },
   
   iconContainer: {
@@ -198,7 +198,7 @@ const styles = {
     width: '4px',
     height: '4px',
     borderRadius: '50%',
-    background: '#3b82f6',
+    background: 'var(--app-primary)',
     animation: 'pulse 2s infinite'
   },
   

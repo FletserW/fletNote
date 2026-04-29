@@ -343,16 +343,16 @@ const DayOffConfigPanel: React.FC<DayOffConfigPanelProps> = ({ onConfigChange })
 const styles = {
   container: {
     padding: '20px',
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '12px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     marginBottom: '20px'
   },
   title: {
     fontSize: '20px',
     fontWeight: '600',
     marginBottom: '20px',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   alert: {
     padding: '16px',
@@ -364,7 +364,7 @@ const styles = {
   },
   loading: {
     textAlign: 'center' as const,
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     padding: '20px'
   },
   configsList: {
@@ -374,24 +374,24 @@ const styles = {
     fontSize: '16px',
     fontWeight: '600',
     marginBottom: '12px',
-    color: '#cbd5e1'
+    color: 'var(--app-text-secondary)'
   },
   emptyMessage: {
     padding: '16px',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     borderRadius: '8px',
     textAlign: 'center' as const,
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   configItem: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '12px',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     borderRadius: '8px',
     marginBottom: '8px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   configInfo: {
     flex: 1
@@ -399,11 +399,11 @@ const styles = {
   configType: {
     display: 'block',
     marginBottom: '4px',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   configDetail: {
     fontSize: '12px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   removeButton: {
     padding: '6px 12px',
@@ -417,9 +417,9 @@ const styles = {
   formSection: {
     marginBottom: '24px',
     padding: '16px',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     borderRadius: '8px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   formGroup: {
     marginBottom: '12px'
@@ -427,32 +427,32 @@ const styles = {
   label: {
     display: 'block',
     marginBottom: '4px',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     fontSize: '14px'
   },
   input: {
     width: '100%',
     padding: '8px 12px',
-    background: '#1e293b',
-    border: '1px solid #334155',
+    background: 'var(--app-surface-elevated)',
+    border: '1px solid var(--app-border)',
     borderRadius: '6px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px',
     marginTop: '4px'
   },
   select: {
     width: '100%',
     padding: '8px 12px',
-    background: '#1e293b',
-    border: '1px solid #334155',
+    background: 'var(--app-surface-elevated)',
+    border: '1px solid var(--app-border)',
     borderRadius: '6px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px',
     marginTop: '4px'
   },
   addButton: {
     padding: '10px 16px',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     border: 'none',
     borderRadius: '6px',
     color: 'white',

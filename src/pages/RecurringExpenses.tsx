@@ -306,7 +306,7 @@ useEffect(() => {
       case 'essential': return '#ef4444';
       case 'important': return '#f59e0b';
       case 'optional': return '#10b981';
-      default: return '#94a3b8';
+      default: return 'var(--app-text-muted)';
     }
   };
 
@@ -447,8 +447,8 @@ useEffect(() => {
             onClick={() => setFilter('active')}
             style={{
               ...styles.filterTab,
-              background: filter === 'active' ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : '#1e293b',
-              color: filter === 'active' ? '#fff' : '#94a3b8'
+              background: filter === 'active' ? 'linear-gradient(135deg, var(--app-primary), #2563eb)' : 'var(--app-surface-elevated)',
+              color: filter === 'active' ? '#fff' : 'var(--app-text-muted)'
             }}
           >
             Ativas
@@ -457,8 +457,8 @@ useEffect(() => {
             onClick={() => setFilter('all')}
             style={{
               ...styles.filterTab,
-              background: filter === 'all' ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : '#1e293b',
-              color: filter === 'all' ? '#fff' : '#94a3b8'
+              background: filter === 'all' ? 'linear-gradient(135deg, var(--app-primary), #2563eb)' : 'var(--app-surface-elevated)',
+              color: filter === 'all' ? '#fff' : 'var(--app-text-muted)'
             }}
           >
             Todas
@@ -467,8 +467,8 @@ useEffect(() => {
             onClick={() => setFilter('paused')}
             style={{
               ...styles.filterTab,
-              background: filter === 'paused' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : '#1e293b',
-              color: filter === 'paused' ? '#fff' : '#94a3b8'
+              background: filter === 'paused' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'var(--app-surface-elevated)',
+              color: filter === 'paused' ? '#fff' : 'var(--app-text-muted)'
             }}
           >
             Pausadas
@@ -518,7 +518,7 @@ useEffect(() => {
                     ...styles.expenseDay,
                     background: expense.dueDay <= new Date().getDate() && expense.status === 'active'
                       ? 'linear-gradient(135deg, #10b981, #059669)'
-                      : 'linear-gradient(135deg, #3b82f6, #2563eb)'
+                      : 'linear-gradient(135deg, var(--app-primary), #2563eb)'
                   }}>
                     <span style={styles.expenseDayNumber}>{expense.dueDay}</span>
                     <span style={styles.expenseDayLabel}>dia</span>
@@ -845,9 +845,9 @@ useEffect(() => {
 const styles = {
   container: {
     padding: '20px 16px',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     minHeight: '100vh',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     paddingBottom: '100px'
   },
   
@@ -861,7 +861,7 @@ const styles = {
   backButton: {
     background: 'transparent',
     border: 'none',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     cursor: 'pointer',
     padding: '8px',
     borderRadius: '8px',
@@ -874,7 +874,7 @@ const styles = {
     fontSize: '24px',
     fontWeight: '700',
     margin: 0,
-    background: 'linear-gradient(135deg, #60a5fa, #3b82f6)',
+    background: 'var(--app-gradient-title)',
     backgroundClip: 'text',
     WebkitBackgroundClip: 'text',
     color: 'transparent'
@@ -882,7 +882,7 @@ const styles = {
   
   subtitle: {
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginTop: '4px'
   },
   
@@ -890,8 +890,8 @@ const styles = {
     width: '40px',
     height: '40px',
     borderRadius: '10px',
-    background: '#1e293b',
-    border: '1px solid #334155',
+    background: 'var(--app-surface-elevated)',
+    border: '1px solid var(--app-border)',
     color: '#10b981',
     display: 'flex',
     alignItems: 'center',
@@ -931,13 +931,13 @@ const styles = {
   
   alertMessage: {
     fontSize: '12px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   
   alertClose: {
     background: 'transparent',
     border: 'none',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     cursor: 'pointer',
     padding: '4px'
   },
@@ -950,10 +950,10 @@ const styles = {
   },
   
   statsCard: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '16px',
     padding: '16px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     display: 'flex',
     alignItems: 'center',
     gap: '12px'
@@ -963,7 +963,7 @@ const styles = {
     width: '40px',
     height: '40px',
     borderRadius: '10px',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -976,22 +976,22 @@ const styles = {
   
   statsLabel: {
     fontSize: '11px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginBottom: '4px'
   },
   
   statsValue: {
     fontSize: '16px',
     fontWeight: '700',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   filtersCard: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '16px',
     padding: '12px',
     marginBottom: '24px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   
   filterTabs: {
@@ -1029,24 +1029,24 @@ const styles = {
   weekTitle: {
     fontSize: '16px',
     fontWeight: '600',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   
   weekTotal: {
     fontSize: '14px',
     fontWeight: '600',
-    color: '#3b82f6',
-    background: 'rgba(59, 130, 246, 0.1)',
+    color: 'var(--app-primary)',
+    background: 'var(--app-primary-soft)',
     padding: '4px 12px',
     borderRadius: '20px'
   },
   
   expenseCard: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '16px',
     padding: '16px',
     marginBottom: '12px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     display: 'flex',
     gap: '16px',
     position: 'relative' as const
@@ -1056,7 +1056,7 @@ const styles = {
     width: '50px',
     height: '50px',
     borderRadius: '12px',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     display: 'flex',
     flexDirection: 'column' as const,
     alignItems: 'center',
@@ -1091,7 +1091,7 @@ const styles = {
   expenseName: {
     fontSize: '16px',
     fontWeight: '600',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   expensePriority: {
@@ -1110,7 +1110,7 @@ const styles = {
   
   expenseCategory: {
     fontSize: '13px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   
   expenseAmount: {
@@ -1124,7 +1124,7 @@ const styles = {
     alignItems: 'center',
     gap: '12px',
     fontSize: '11px',
-    color: '#64748b',
+    color: 'var(--app-text-subtle)',
     marginBottom: '8px'
   },
   
@@ -1163,7 +1163,7 @@ const styles = {
   actionButton: {
     background: 'transparent',
     border: 'none',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     cursor: 'pointer',
     padding: '4px',
     borderRadius: '4px'
@@ -1181,14 +1181,14 @@ const styles = {
     width: '40px',
     height: '40px',
     border: '3px solid rgba(51, 65, 85, 0.3)',
-    borderTop: '3px solid #3b82f6',
+    borderTop: '3px solid var(--app-primary)',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite'
   },
   
   loadingText: {
     marginTop: '16px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontSize: '14px'
   },
   
@@ -1199,28 +1199,28 @@ const styles = {
     justifyContent: 'center',
     padding: '60px 20px',
     textAlign: 'center' as const,
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '20px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   
   emptyTitle: {
     fontSize: '18px',
     fontWeight: '600',
     margin: '20px 0 8px 0',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   emptyText: {
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginBottom: '24px',
     maxWidth: '300px'
   },
   
   emptyButton: {
     padding: '12px 24px',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     border: 'none',
     borderRadius: '10px',
     color: 'white',
@@ -1239,7 +1239,7 @@ const styles = {
     width: '56px',
     height: '56px',
     borderRadius: '50%',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     color: 'white',
     border: 'none',
     boxShadow: '0 4px 12px rgba(59, 130, 246, 0.5)',
@@ -1265,18 +1265,18 @@ const styles = {
   },
   
   modalContent: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '20px',
     maxWidth: '500px',
     width: '100%',
     maxHeight: '90vh',
     overflowY: 'auto' as const,
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   
   modalHeader: {
     padding: '20px',
-    borderBottom: '1px solid #334155',
+    borderBottom: '1px solid var(--app-border)',
     display: 'flex',
     alignItems: 'center',
     gap: '12px'
@@ -1286,7 +1286,7 @@ const styles = {
     width: '40px',
     height: '40px',
     borderRadius: '10px',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1296,7 +1296,7 @@ const styles = {
   modalTitle: {
     fontSize: '18px',
     fontWeight: '600',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     margin: 0
   },
   
@@ -1312,37 +1312,37 @@ const styles = {
     display: 'block',
     fontSize: '14px',
     fontWeight: '600',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     marginBottom: '8px'
   },
   
   formInput: {
     width: '100%',
     padding: '10px 12px',
-    background: '#0f172a',
-    border: '1px solid #334155',
+    background: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px'
   },
   
   formSelect: {
     width: '100%',
     padding: '10px 12px',
-    background: '#0f172a',
-    border: '1px solid #334155',
+    background: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px'
   },
   
   formTextarea: {
     width: '100%',
     padding: '10px 12px',
-    background: '#0f172a',
-    border: '1px solid #334155',
+    background: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px',
     resize: 'vertical' as const
   },
@@ -1368,7 +1368,7 @@ const styles = {
   
   checkboxLabel: {
     fontSize: '14px',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     cursor: 'pointer'
   },
   
@@ -1382,16 +1382,16 @@ const styles = {
   modalCancel: {
     padding: '12px',
     background: 'transparent',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontWeight: '600',
     cursor: 'pointer'
   },
   
   modalConfirm: {
     padding: '12px',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     border: 'none',
     borderRadius: '10px',
     color: 'white',

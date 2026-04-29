@@ -291,7 +291,7 @@ export default function Statement() {
           position: 'relative',
           overflow: 'hidden',
           background: statementBalance.accumulatedBalance >= 0 
-            ? 'linear-gradient(135deg, #3b82f6, #2563eb)' 
+            ? 'linear-gradient(135deg, var(--app-primary), #2563eb)' 
             : 'linear-gradient(135deg, #f59e0b, #d97706)',
           minHeight: '100px'
         }}>
@@ -607,9 +607,9 @@ export default function Statement() {
 const styles = {
   container: {
     padding: '20px 16px',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     minHeight: '100vh',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   header: {
@@ -622,7 +622,7 @@ const styles = {
   backButton: {
     background: 'transparent',
     border: 'none',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     cursor: 'pointer',
     padding: '8px',
     marginRight: '12px',
@@ -637,7 +637,7 @@ const styles = {
     fontSize: '24px',
     fontWeight: '700',
     margin: 0,
-    background: 'linear-gradient(135deg, #60a5fa, #3b82f6)',
+    background: 'var(--app-gradient-title)',
     backgroundClip: 'text',
     WebkitBackgroundClip: 'text',
     color: 'transparent'
@@ -645,7 +645,7 @@ const styles = {
   
   subtitle: {
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginTop: '4px'
   },
   
@@ -694,11 +694,11 @@ const styles = {
   },
   
   filtersCard: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '20px',
     padding: '20px',
     marginBottom: '24px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
   },
   
@@ -706,7 +706,7 @@ const styles = {
     fontSize: '18px',
     fontWeight: '600',
     margin: '0 0 20px 0',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     display: 'flex',
     alignItems: 'center',
     gap: '8px'
@@ -730,7 +730,7 @@ const styles = {
   filterLabel: {
     fontSize: '14px',
     fontWeight: '600',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     display: 'flex',
     alignItems: 'center',
     gap: '6px'
@@ -744,29 +744,29 @@ const styles = {
   monthInput: {
     flex: 1,
     padding: '10px 12px',
-    background: '#0f172a',
-    border: '1px solid #334155',
+    background: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px'
   },
   
   yearInput: {
     flex: 2,
     padding: '10px 12px',
-    background: '#0f172a',
-    border: '1px solid #334155',
+    background: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px'
   },
   
   selectInput: {
     padding: '10px 12px',
-    background: '#0f172a',
-    border: '1px solid #334155',
+    background: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px',
     cursor: 'pointer'
   },
@@ -774,10 +774,10 @@ const styles = {
   searchInput: {
     padding: '10px 12px',
     paddingLeft: '40px',
-    background: '#0f172a',
-    border: '1px solid #334155',
+    background: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px',
     position: 'relative' as const
   },
@@ -785,9 +785,9 @@ const styles = {
   resultsCount: {
     marginTop: '16px',
     paddingTop: '16px',
-    borderTop: '1px solid #334155',
+    borderTop: '1px solid var(--app-border)',
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     textAlign: 'center' as const
   },
   
@@ -807,14 +807,14 @@ const styles = {
     width: '40px',
     height: '40px',
     border: '3px solid rgba(51, 65, 85, 0.3)',
-    borderTop: '3px solid #3b82f6',
+    borderTop: '3px solid var(--app-primary)',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite'
   },
   
   loadingText: {
     marginTop: '16px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontSize: '14px'
   },
   
@@ -831,19 +831,19 @@ const styles = {
     fontSize: '18px',
     fontWeight: '600',
     margin: '20px 0 8px 0',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   emptyText: {
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginBottom: '24px',
     maxWidth: '300px'
   },
   
   emptyButton: {
     padding: '12px 24px',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     border: 'none',
     borderRadius: '10px',
     color: 'white',
@@ -856,10 +856,10 @@ const styles = {
   // NOVOS ESTILOS PARA AGRUPAMENTO POR DATA
   dayGroup: {
     marginBottom: '24px',
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '20px',
     overflow: 'hidden',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.2)'
   },
   
@@ -868,8 +868,8 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '16px 20px',
-    background: 'rgba(30, 41, 59, 0.8)',
-    borderBottom: '1px solid #334155'
+    background: 'var(--app-soft-panel)',
+    borderBottom: '1px solid var(--app-border)'
   },
   
   dayHeaderLeft: {
@@ -892,12 +892,12 @@ const styles = {
   dayShortDate: {
     fontSize: '16px',
     fontWeight: '700',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   dayFullDate: {
     fontSize: '12px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginTop: '2px'
   },
   
@@ -910,8 +910,8 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     padding: '12px 20px',
-    background: 'rgba(15, 23, 42, 0.5)',
-    borderBottom: '1px solid #334155'
+    background: 'var(--app-soft-panel-muted)',
+    borderBottom: '1px solid var(--app-border)'
   },
   
   daySummaryItem: {
@@ -923,7 +923,7 @@ const styles = {
   
   daySummaryLabel: {
     fontSize: '11px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontWeight: '600',
     textTransform: 'uppercase' as const
   },
@@ -945,11 +945,11 @@ const styles = {
   },
   
   transactionCard: {
-    background: 'rgba(15, 23, 42, 0.5)',
+    background: 'var(--app-soft-panel-muted)',
     borderRadius: '12px',
     padding: '12px',
     marginBottom: '8px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     transition: 'all 0.2s ease'
   },
   
@@ -992,13 +992,13 @@ const styles = {
   transactionCategory: {
     fontSize: '14px',
     fontWeight: '600',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     marginBottom: '2px'
   },
   
   transactionDescription: {
     fontSize: '12px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   
   transactionAmount: {
@@ -1016,7 +1016,7 @@ const styles = {
   
   transactionTime: {
     fontSize: '11px',
-    color: '#64748b',
+    color: 'var(--app-text-subtle)',
     fontFamily: 'monospace'
   },
   

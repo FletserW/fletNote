@@ -59,7 +59,7 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ initialData, onSave, onClose })
             {initialData ? 'Editar Orçamento' : 'Novo Orçamento'}
           </h2>
           <button onClick={onClose} style={styles.closeButton}>
-            <X size={24} color="#94a3b8" />
+            <X size={24} color="var(--app-text-muted)" />
           </button>
         </div>
 
@@ -176,14 +176,14 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ initialData, onSave, onClose })
                 onChange={(e) => setFormData({...formData, autoRenew: e.target.checked})}
                 style={styles.checkbox}
               />
-              <Repeat size={16} color="#94a3b8" />
+              <Repeat size={16} color="var(--app-text-muted)" />
               Renovação automática
             </label>
           </div>
 
           <div style={styles.alertSection}>
             <div style={styles.alertHeader}>
-              <Bell size={16} color="#94a3b8" />
+              <Bell size={16} color="var(--app-text-muted)" />
               <h3 style={styles.alertTitle}>Alertas</h3>
             </div>
             
@@ -261,10 +261,10 @@ const styles = {
     padding: '16px'
   },
   modalContent: {
-    backgroundColor: '#1e293b',
+    backgroundColor: 'var(--app-surface-elevated)',
     borderRadius: '20px',
     padding: '24px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
     maxWidth: '500px',
     width: '100%',
@@ -281,7 +281,7 @@ const styles = {
     fontSize: '20px',
     fontWeight: '600',
     margin: '0',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   closeButton: {
     backgroundColor: 'transparent',
@@ -306,14 +306,14 @@ const styles = {
   label: {
     fontSize: '14px',
     fontWeight: '500',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   input: {
-    backgroundColor: '#0f172a',
-    border: '1px solid #334155',
+    backgroundColor: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
     padding: '12px 16px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '16px',
     outline: 'none',
     transition: 'border-color 0.2s ease',
@@ -323,28 +323,28 @@ const styles = {
   inputWithPrefix: {
     display: 'flex',
     alignItems: 'center',
-    backgroundColor: '#0f172a',
-    border: '1px solid #334155',
+    backgroundColor: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
     overflow: 'hidden'
   },
   currencyPrefix: {
     padding: '0 12px',
-    backgroundColor: '#334155',
+    backgroundColor: 'var(--app-border)',
     height: '100%',
     display: 'flex',
     alignItems: 'center',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontSize: '16px',
     fontWeight: '500',
     minWidth: '40px'
   },
   select: {
-    backgroundColor: '#0f172a',
-    border: '1px solid #334155',
+    backgroundColor: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
     padding: '12px 16px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '16px',
     outline: 'none',
     width: '100%',
@@ -361,19 +361,19 @@ const styles = {
     alignItems: 'center',
     gap: '4px',
     padding: '12px 8px',
-    backgroundColor: '#0f172a',
-    border: '1px solid #334155',
+    backgroundColor: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontSize: '12px',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
     borderWidth: '2px'
   },
   periodButtonActive: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderColor: '#3b82f6',
-    color: '#3b82f6'
+    backgroundColor: 'var(--app-primary-soft)',
+    borderColor: 'var(--app-primary)',
+    color: 'var(--app-primary)'
   },
   dateRange: {
     display: 'grid',
@@ -385,7 +385,7 @@ const styles = {
     alignItems: 'center',
     gap: '8px',
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     cursor: 'pointer'
   },
   checkbox: {
@@ -397,7 +397,7 @@ const styles = {
     backgroundColor: 'rgba(15, 23, 42, 0.5)',
     borderRadius: '12px',
     padding: '16px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   alertHeader: {
     display: 'flex',
@@ -409,7 +409,7 @@ const styles = {
     fontSize: '14px',
     fontWeight: '600',
     margin: '0',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   percentageInput: {
     display: 'flex',
@@ -420,7 +420,7 @@ const styles = {
   rangeInput: {
     flex: 1,
     height: '4px',
-    backgroundColor: '#334155',
+    backgroundColor: 'var(--app-border)',
     borderRadius: '2px',
     outline: 'none',
     cursor: 'pointer',
@@ -433,18 +433,18 @@ const styles = {
   percentageValue: {
     fontSize: '14px',
     fontWeight: '600',
-    color: '#3b82f6'
+    color: 'var(--app-primary)'
   },
   percentageLabels: {
     display: 'flex',
     justifyContent: 'space-between',
     fontSize: '12px',
-    color: '#64748b',
+    color: 'var(--app-text-subtle)',
     marginTop: '4px'
   },
   percentageLabel: {
     fontSize: '12px',
-    color: '#64748b'
+    color: 'var(--app-text-subtle)'
   },
   formActions: {
     display: 'flex',
@@ -454,10 +454,10 @@ const styles = {
   cancelButton: {
     flex: 1,
     padding: '12px 16px',
-    backgroundColor: '#0f172a',
-    border: '1px solid #334155',
+    backgroundColor: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '12px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px',
     fontWeight: '500',
     cursor: 'pointer',
@@ -469,7 +469,7 @@ const styles = {
     background: 'linear-gradient(135deg, #10b981, #059669)',
     border: 'none',
     borderRadius: '12px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px',
     fontWeight: '600',
     cursor: 'pointer',

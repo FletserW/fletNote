@@ -32,8 +32,8 @@ const styles = {
   container: {
     padding: '20px',
     minHeight: '100vh',
-    background: '#0f172a',
-    color: '#f8fafc'
+    background: 'var(--app-surface)',
+    color: 'var(--app-text)'
   },
   header: {
     marginBottom: '30px'
@@ -42,14 +42,14 @@ const styles = {
     fontSize: '28px',
     fontWeight: '700',
     marginBottom: '8px',
-    background: 'linear-gradient(135deg, #60a5fa, #3b82f6)',
+    background: 'var(--app-gradient-title)',
     backgroundClip: 'text',
     WebkitBackgroundClip: 'text',
     color: 'transparent'
   },
   subtitle: {
     fontSize: '16px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   content: {
     maxWidth: '800px',
@@ -59,20 +59,20 @@ const styles = {
     maxWidth: '800px',
     margin: '30px auto 0',
     padding: '20px',
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '12px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   infoTitle: {
     fontSize: '18px',
     fontWeight: '600',
     marginBottom: '12px',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   infoList: {
     margin: 0,
     paddingLeft: '20px',
-    color: '#cbd5e1'
+    color: 'var(--app-text-secondary)'
   },
   infoListLi: {
     marginBottom: '8px',

@@ -70,7 +70,7 @@ export default function AddTransaction() {
   const [isLoading, setIsLoading] = useState(false)
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
-  const [newCategoryColor, setNewCategoryColor] = useState('#3b82f6')
+  const [newCategoryColor, setNewCategoryColor] = useState('var(--app-primary)')
   const [isAddingCategory, setIsAddingCategory] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([])
@@ -127,7 +127,7 @@ export default function AddTransaction() {
       // Fechar modal e limpar formulário
       setShowAddCategoryModal(false)
       setNewCategoryName('')
-      setNewCategoryColor('#3b82f6')
+      setNewCategoryColor('var(--app-primary)')
       
       alert(`✅ Categoria "${newCategory.name}" adicionada com sucesso!`)
     } catch (error) {
@@ -269,8 +269,9 @@ export default function AddTransaction() {
                 ...styles.typeButton,
                 background: type === 'income' 
                   ? 'linear-gradient(135deg, #10b981, #059669)' 
-                  : '#1e293b',
-                border: type === 'income' ? 'none' : '1px solid #334155'
+                  : 'var(--app-surface-elevated)',
+                border: type === 'income' ? 'none' : '1px solid var(--app-border)',
+                color: type === 'income' ? 'white' : 'var(--app-text)'
               }}
               disabled={isLoading}
               type="button"
@@ -280,7 +281,10 @@ export default function AddTransaction() {
                 <Icons.Income />
                 <span>Entrada</span>
               </div>
-              <span style={styles.typeButtonSubtitle}>Dinheiro recebido</span>
+              <span style={{
+                ...styles.typeButtonSubtitle,
+                color: type === 'income' ? 'rgba(255, 255, 255, 0.8)' : 'var(--app-text-muted)'
+              }}>Dinheiro recebido</span>
             </button>
             
             <button 
@@ -292,8 +296,9 @@ export default function AddTransaction() {
                 ...styles.typeButton,
                 background: type === 'expense' 
                   ? 'linear-gradient(135deg, #ef4444, #dc2626)' 
-                  : '#1e293b',
-                border: type === 'expense' ? 'none' : '1px solid #334155'
+                  : 'var(--app-surface-elevated)',
+                border: type === 'expense' ? 'none' : '1px solid var(--app-border)',
+                color: type === 'expense' ? 'white' : 'var(--app-text)'
               }}
               disabled={isLoading}
               type="button"
@@ -303,7 +308,10 @@ export default function AddTransaction() {
                 <Icons.Expense />
                 <span>Gasto</span>
               </div>
-              <span style={styles.typeButtonSubtitle}>Dinheiro gasto</span>
+              <span style={{
+                ...styles.typeButtonSubtitle,
+                color: type === 'expense' ? 'rgba(255, 255, 255, 0.8)' : 'var(--app-text-muted)'
+              }}>Dinheiro gasto</span>
             </button>
           </div>
         </div>
@@ -368,7 +376,7 @@ export default function AddTransaction() {
         {/* CATEGORIA - ATUALIZADO */}
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
-            <div style={{ ...styles.sectionIcon, background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
+            <div style={{ ...styles.sectionIcon, background: 'linear-gradient(135deg, var(--app-primary), #2563eb)' }}>
               <Icons.Category />
             </div>
             <div style={styles.sectionHeaderContent}>
@@ -389,7 +397,7 @@ export default function AddTransaction() {
             <span style={styles.selectedCategoryLabel}>Selecionada:</span>
             <span style={{
               ...styles.selectedCategoryValue,
-              color: filteredCategories.find(c => c.name === category)?.color || '#3b82f6'
+              color: filteredCategories.find(c => c.name === category)?.color || 'var(--app-primary)'
             }}>
               {category}
             </span>
@@ -404,10 +412,10 @@ export default function AddTransaction() {
                 style={{
                   ...styles.categoryButton,
                   background: category === cat.name 
-                    ? (cat.color || '#3b82f6')
-                    : '#0f172a',
-                  border: category === cat.name ? 'none' : `1px solid ${cat.color || '#334155'}`,
-                  color: category === cat.name ? 'white' : (cat.color || '#f8fafc')
+                    ? (cat.color || 'var(--app-primary)')
+                    : 'var(--app-surface)',
+                  border: category === cat.name ? 'none' : `1px solid ${cat.color || 'var(--app-border)'}`,
+                  color: category === cat.name ? 'white' : (cat.color || 'var(--app-text)')
                 }}
                 disabled={isLoading}
                 aria-pressed={category === cat.name}
@@ -425,7 +433,7 @@ export default function AddTransaction() {
         {/* DATA (OPCIONAL) */}
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
-            <div style={{ ...styles.sectionIcon, background: 'linear-gradient(135deg, #64748b, #475569)' }}>
+            <div style={{ ...styles.sectionIcon, background: 'linear-gradient(135deg, var(--app-text-subtle), #475569)' }}>
               <Icons.Calendar />
             </div>
             <div>
@@ -464,7 +472,7 @@ export default function AddTransaction() {
                 onClick={() => {
                   setShowAddCategoryModal(false)
                   setNewCategoryName('')
-                  setNewCategoryColor('#3b82f6')
+                  setNewCategoryColor('var(--app-primary)')
                 }}
                 style={styles.modalCloseButton}
               >
@@ -493,8 +501,8 @@ export default function AddTransaction() {
                 <label style={styles.formLabel}>Cor</label>
                 <div style={styles.colorPicker}>
                   {[
-                    '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
-                    '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'
+                    'var(--app-primary)', '#ef4444', '#10b981', '#f59e0b', 
+                    '#8b5cf6', '#ec4899', '#14b8a6', 'var(--app-text-subtle)'
                   ].map(color => (
                     <button
                       key={color}
@@ -520,7 +528,7 @@ export default function AddTransaction() {
                   onClick={() => {
                     setShowAddCategoryModal(false)
                     setNewCategoryName('')
-                    setNewCategoryColor('#3b82f6')
+                    setNewCategoryColor('var(--app-primary)')
                   }}
                   style={styles.modalCancel}
                   disabled={isAddingCategory}
@@ -597,9 +605,9 @@ export default function AddTransaction() {
 const styles = {
   container: {
     padding: '20px 16px',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     minHeight: '100vh',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     position: 'relative' as const
   },
   
@@ -612,7 +620,7 @@ const styles = {
   backButton: {
     background: 'transparent',
     border: 'none',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     cursor: 'pointer',
     padding: '8px',
     marginRight: '12px',
@@ -627,7 +635,7 @@ const styles = {
     fontSize: '24px',
     fontWeight: '700',
     margin: 0,
-    background: 'linear-gradient(135deg, #60a5fa, #3b82f6)',
+    background: 'var(--app-gradient-title)',
     backgroundClip: 'text',
     WebkitBackgroundClip: 'text',
     color: 'transparent'
@@ -635,23 +643,23 @@ const styles = {
   
   subtitle: {
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginTop: '4px'
   },
   
   mainCard: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '20px',
     padding: '20px',
     marginBottom: '20px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
   },
   
   section: {
     marginBottom: '24px',
     paddingBottom: '24px',
-    borderBottom: '1px solid #334155',
+    borderBottom: '1px solid var(--app-border)',
     '&:last-child': {
       marginBottom: 0,
       paddingBottom: 0,
@@ -680,12 +688,12 @@ const styles = {
     fontSize: '16px',
     fontWeight: '600',
     margin: 0,
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   sectionSubtitle: {
     fontSize: '12px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginTop: '2px'
   },
   
@@ -699,7 +707,7 @@ const styles = {
     padding: '16px',
     borderRadius: '12px',
     border: 'none',
-    color: 'white',
+    color: 'var(--app-text)',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
     display: 'flex',
@@ -718,16 +726,16 @@ const styles = {
   
   typeButtonSubtitle: {
     fontSize: '12px',
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'var(--app-text-muted)',
     textAlign: 'left' as const
   },
   
   amountInputContainer: {
     display: 'flex',
     alignItems: 'center',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     borderRadius: '12px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     padding: '0 16px',
     transition: 'all 0.2s ease'
   },
@@ -735,7 +743,7 @@ const styles = {
   currencySymbol: {
     fontSize: '20px',
     fontWeight: '600',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginRight: '8px'
   },
   
@@ -744,19 +752,19 @@ const styles = {
     padding: '16px 0',
     background: 'transparent',
     border: 'none',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '24px',
     fontWeight: '700',
     fontFamily: 'monospace',
     outline: 'none',
     '&::placeholder': {
-      color: '#64748b'
+      color: 'var(--app-text-subtle)'
     }
   },
   
   inputHint: {
     fontSize: '12px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginTop: '8px',
     textAlign: 'center' as const
   },
@@ -764,10 +772,10 @@ const styles = {
   textInput: {
     width: '100%',
     padding: '16px',
-    background: '#0f172a',
-    border: '1px solid #334155',
+    background: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '12px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px',
     outline: 'none',
     transition: 'all 0.2s ease'
@@ -775,7 +783,7 @@ const styles = {
   
   charCount: {
     fontSize: '12px',
-    color: '#64748b',
+    color: 'var(--app-text-subtle)',
     textAlign: 'right' as const,
     marginTop: '4px'
   },
@@ -784,22 +792,22 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     padding: '12px 16px',
     borderRadius: '12px',
     marginBottom: '16px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   
   selectedCategoryLabel: {
     fontSize: '14px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   
   selectedCategoryValue: {
     fontSize: '14px',
     fontWeight: '600',
-    color: '#3b82f6'
+    color: 'var(--app-primary)'
   },
   
   categoriesGrid: {
@@ -828,10 +836,10 @@ const styles = {
   dateInput: {
     width: '100%',
     padding: '16px',
-    background: '#0f172a',
-    border: '1px solid #334155',
+    background: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '12px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px',
     outline: 'none'
   },
@@ -845,10 +853,10 @@ const styles = {
   
   cancelButton: {
     padding: '16px',
-    background: '#1e293b',
-    border: '1px solid #334155',
+    background: 'var(--app-surface-elevated)',
+    border: '1px solid var(--app-border)',
     borderRadius: '12px',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     fontSize: '16px',
     fontWeight: '600',
     cursor: 'pointer',
@@ -857,7 +865,7 @@ const styles = {
   
   saveButton: {
     padding: '16px',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     border: 'none',
     borderRadius: '12px',
     color: 'white',
@@ -890,17 +898,17 @@ const styles = {
     flexDirection: 'column' as const,
     alignItems: 'center',
     gap: '16px',
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     padding: '32px',
     borderRadius: '20px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   
   loadingSpinner: {
     width: '48px',
     height: '48px',
     border: '3px solid rgba(51, 65, 85, 0.3)',
-    borderTop: '3px solid #3b82f6',
+    borderTop: '3px solid var(--app-primary)',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite'
   },
@@ -916,7 +924,7 @@ const styles = {
   
   loadingText: {
     fontSize: '16px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontWeight: '500'
   },
 
@@ -952,7 +960,7 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    background: 'rgba(15, 23, 42, 0.95)',
+    background: 'var(--app-overlay)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -962,12 +970,12 @@ const styles = {
   },
 
   modalContent: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '20px',
     padding: '24px',
     width: '100%',
     maxWidth: '400px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)'
   },
 
@@ -987,14 +995,14 @@ const styles = {
   modalTitle: {
     fontSize: '20px',
     fontWeight: '600' as const,
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     margin: 0,
     marginBottom: '4px'
   },
 
   modalSubtitle: {
     fontSize: '14px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
 
   modalCloseButton: {
@@ -1003,7 +1011,7 @@ const styles = {
     right: '0',
     background: 'transparent',
     border: 'none',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontSize: '24px',
     cursor: 'pointer',
     width: '32px',
@@ -1027,17 +1035,17 @@ const styles = {
     display: 'block' as const,
     fontSize: '14px',
     fontWeight: '600' as const,
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     marginBottom: '8px'
   },
 
   formInput: {
     width: '100%',
     padding: '12px 16px',
-    background: '#0f172a',
-    border: '1px solid #334155',
+    background: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '12px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '15px',
     outline: 'none',
     transition: 'all 0.2s ease'
@@ -1045,7 +1053,7 @@ const styles = {
 
   formHelp: {
     fontSize: '12px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginTop: '4px'
   },
 
@@ -1067,7 +1075,7 @@ const styles = {
 
   selectedColor: {
     fontSize: '13px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     display: 'flex',
     alignItems: 'center',
     gap: '8px'
@@ -1081,9 +1089,9 @@ const styles = {
   modalCancel: {
     flex: 1,
     padding: '12px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     background: 'transparent',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     borderRadius: '12px',
     fontSize: '15px',
     fontWeight: '600' as const,

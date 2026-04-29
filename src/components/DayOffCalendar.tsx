@@ -404,7 +404,7 @@ const syncLocalToFirebase = async () => {
       {/* CARDS DE RESUMO */}
       <div style={styles.statsGrid}>
         <div style={styles.statCard}>
-          <div style={{ ...styles.statIcon, background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
+          <div style={{ ...styles.statIcon, background: 'linear-gradient(135deg, var(--app-primary), #2563eb)' }}>
             <Icons.Moon />
           </div>
           <div style={styles.statContent}>
@@ -561,7 +561,7 @@ try {
               key={day} 
               style={{
                 ...styles.weekDay,
-                color: index === 0 || index === 3 ? '#ef4444' : '#94a3b8'
+                color: index === 0 || index === 3 ? '#ef4444' : 'var(--app-text-muted)'
               }}
             >
               {day}
@@ -584,8 +584,8 @@ try {
             const isSelected = selectedDate?.toDateString() === date.toDateString();
 
             // Determinar cor baseada no tipo de folga
-            let backgroundColor = '#0f172a';
-            let borderColor = '#334155';
+            let backgroundColor = 'var(--app-surface)';
+            let borderColor = 'var(--app-border)';
             
             if (dayOffType === 'extra') {
               backgroundColor = 'rgba(16, 185, 129, 0.2)';
@@ -595,7 +595,7 @@ try {
               borderColor = '#8b5cf6';
             } else if (dayOffType === 'regular') {
               backgroundColor = 'rgba(59, 130, 246, 0.2)';
-              borderColor = '#3b82f6';
+              borderColor = 'var(--app-primary)';
             }
 
             if (isToday) {
@@ -633,7 +633,7 @@ try {
                     ) : dayOffType === 'fixed' ? (
                       <span style={{ color: '#8b5cf6' }}>⊙</span>
                     ) : (
-                      <span style={{ color: '#3b82f6' }}>⋆</span>
+                      <span style={{ color: 'var(--app-primary)' }}>⋆</span>
                     )}
                   </div>
                 )}
@@ -717,7 +717,7 @@ try {
           </div>
           
           <div style={styles.legendItem}>
-            <div style={{ ...styles.legendColor, background: 'rgba(59, 130, 246, 0.2)', borderColor: '#3b82f6' }}></div>
+            <div style={{ ...styles.legendColor, background: 'rgba(59, 130, 246, 0.2)', borderColor: 'var(--app-primary)' }}></div>
             <div>
               <div style={styles.legendLabel}>Folga Regular</div>
               <div style={styles.legendSubtitle}>A cada X dias/semanas</div>
@@ -733,7 +733,7 @@ try {
           </div>
           
           <div style={styles.legendItem}>
-            <div style={{ ...styles.legendColor, background: '#0f172a', borderColor: '#f59e0b' }}></div>
+            <div style={{ ...styles.legendColor, background: 'var(--app-surface)', borderColor: '#f59e0b' }}></div>
             <div>
               <div style={styles.legendLabel}>Hoje</div>
               <div style={styles.legendSubtitle}>Dia atual</div>
@@ -759,9 +759,9 @@ try {
 const styles = {
   container: {
     padding: '20px 16px',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     minHeight: '100vh',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   header: {
@@ -773,7 +773,7 @@ const styles = {
   backButton: {
     background: 'transparent',
     border: 'none',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     cursor: 'pointer',
     padding: '8px',
     marginRight: '12px',
@@ -788,7 +788,7 @@ const styles = {
     fontSize: '24px',
     fontWeight: '700',
     margin: 0,
-    background: 'linear-gradient(135deg, #60a5fa, #3b82f6)',
+    background: 'var(--app-gradient-title)',
     backgroundClip: 'text',
     WebkitBackgroundClip: 'text',
     color: 'transparent',
@@ -799,7 +799,7 @@ const styles = {
   
   subtitle: {
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginTop: '4px'
   },
   
@@ -811,10 +811,10 @@ const styles = {
   },
   
   statCard: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '16px',
     padding: '16px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     display: 'flex',
     alignItems: 'center'
   },
@@ -842,15 +842,15 @@ const styles = {
   
   statLabel: {
     fontSize: '12px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   
   calendarCard: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '20px',
     padding: '20px',
     marginBottom: '20px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
   },
   
@@ -862,15 +862,15 @@ const styles = {
   },
   
   navButton: {
-    background: '#0f172a',
-    border: '1px solid #334155',
+    background: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
     width: '40px',
     height: '40px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     cursor: 'pointer',
     transition: 'all 0.2s ease'
   },
@@ -882,13 +882,13 @@ const styles = {
   monthName: {
     fontSize: '18px',
     fontWeight: '600',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     marginBottom: '4px'
   },
   
   monthStats: {
     fontSize: '12px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   
   weekDays: {
@@ -919,7 +919,7 @@ const styles = {
     height: '60px',
     borderRadius: '10px',
     border: '2px solid',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     display: 'flex',
     flexDirection: 'column' as const,
     alignItems: 'center',
@@ -934,7 +934,7 @@ const styles = {
     fontSize: '16px',
     fontWeight: '600',
     marginBottom: '4px',
-    color:  '#f8fafc',
+    color:  'var(--app-text)',
     position: 'relative' as const
   },
   
@@ -955,9 +955,9 @@ const styles = {
   selectedDateCard: {
     marginTop: '24px',
     padding: '20px',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     borderRadius: '16px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   
   selectedDateHeader: {
@@ -971,13 +971,13 @@ const styles = {
     fontSize: '16px',
     fontWeight: '600',
     margin: 0,
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   closeButton: {
     background: 'transparent',
     border: 'none',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     cursor: 'pointer',
     padding: '4px',
     borderRadius: '6px',
@@ -1000,13 +1000,13 @@ const styles = {
   
   infoLabel: {
     fontSize: '14px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   
   infoValue: {
     fontSize: '14px',
     fontWeight: '600',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   addButton: {
@@ -1042,18 +1042,18 @@ const styles = {
   },
   
   legendCard: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '20px',
     padding: '20px',
     marginBottom: '20px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   
   legendTitle: {
     fontSize: '18px',
     fontWeight: '600',
     margin: '0 0 16px 0',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   legendGrid: {
@@ -1078,17 +1078,17 @@ const styles = {
   legendLabel: {
     fontSize: '14px',
     fontWeight: '600',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     marginBottom: '2px'
   },
   
   legendSubtitle: {
     fontSize: '12px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   
   tipsCard: {
-    background: 'rgba(59, 130, 246, 0.1)',
+    background: 'var(--app-primary-soft)',
     borderRadius: '20px',
     padding: '20px',
     border: '1px solid rgba(59, 130, 246, 0.3)'
@@ -1098,7 +1098,7 @@ const styles = {
     fontSize: '18px',
     fontWeight: '600',
     margin: '0 0 12px 0',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     display: 'flex',
     alignItems: 'center',
     gap: '8px'
@@ -1107,12 +1107,12 @@ const styles = {
   tipsList: {
     margin: 0,
     paddingLeft: '20px',
-    color: '#cbd5e1'
+    color: 'var(--app-text-secondary)'
   },
   
   tipsListLi: {
     fontSize: '14px',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     marginBottom: '8px',
     lineHeight: '1.5'
   },
@@ -1139,7 +1139,7 @@ const styles = {
   // Adicione ao styles
 syncButton: {
   padding: '8px 16px',
-  background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+  background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
   border: 'none',
   borderRadius: '8px',
   color: 'white',

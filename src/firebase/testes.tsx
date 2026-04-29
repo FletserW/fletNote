@@ -270,7 +270,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '16px'
   },
   
@@ -278,7 +278,7 @@ const styles = {
     width: '40px',
     height: '40px',
     border: '3px solid rgba(59, 130, 246, 0.3)',
-    borderTop: '3px solid #3b82f6',
+    borderTop: '3px solid var(--app-primary)',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
     marginBottom: '10px'

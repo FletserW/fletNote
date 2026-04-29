@@ -67,7 +67,7 @@ export default function Cards() {
     dueDay: 10,
     closingDay: 5,
     isActive: true,
-    color: '#3b82f6'
+    color: 'var(--app-primary)'
   });
 
   const loadData = useCallback(async () => {
@@ -163,7 +163,7 @@ export default function Cards() {
       dueDay: 10,
       closingDay: 5,
       isActive: true,
-      color: '#3b82f6'
+      color: 'var(--app-primary)'
     });
     setEditingCard(null);
   };
@@ -174,7 +174,7 @@ export default function Cards() {
       case 'mastercard': return '#eb001b';
       case 'amex': return '#006fcf';
       case 'elo': return '#f15a29';
-      default: return '#64748b';
+      default: return 'var(--app-text-subtle)';
     }
   };
 
@@ -446,7 +446,7 @@ export default function Cards() {
                 <div style={styles.colorPicker}>
                   <input
                     type="color"
-                    value={newCard.color || '#3b82f6'}
+                    value={newCard.color || 'var(--app-primary)'}
                     onChange={e => setNewCard({ ...newCard, color: e.target.value })}
                     style={styles.colorInput}
                   />
@@ -496,9 +496,9 @@ export default function Cards() {
 const styles = {
   container: {
     padding: '20px 16px',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     minHeight: '100vh',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     paddingBottom: '100px'
   },
   
@@ -512,7 +512,7 @@ const styles = {
   backButton: {
     background: 'transparent',
     border: 'none',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     cursor: 'pointer',
     padding: '8px',
     borderRadius: '8px'
@@ -522,7 +522,7 @@ const styles = {
     fontSize: '24px',
     fontWeight: '700',
     margin: 0,
-    background: 'linear-gradient(135deg, #60a5fa, #3b82f6)',
+    background: 'var(--app-gradient-title)',
     backgroundClip: 'text',
     WebkitBackgroundClip: 'text',
     color: 'transparent'
@@ -530,7 +530,7 @@ const styles = {
   
   subtitle: {
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginTop: '4px'
   },
   
@@ -542,10 +542,10 @@ const styles = {
   },
   
   statsCard: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '16px',
     padding: '16px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     display: 'flex',
     alignItems: 'center',
     gap: '12px'
@@ -555,7 +555,7 @@ const styles = {
     width: '40px',
     height: '40px',
     borderRadius: '10px',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -568,14 +568,14 @@ const styles = {
   
   statsLabel: {
     fontSize: '11px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginBottom: '4px'
   },
   
   statsValue: {
     fontSize: '16px',
     fontWeight: '700',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   cardsContainer: {
@@ -583,10 +583,10 @@ const styles = {
   },
   
   card: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '16px',
     marginBottom: '16px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     overflow: 'hidden',
     display: 'flex'
   },
@@ -611,13 +611,13 @@ const styles = {
   cardName: {
     fontSize: '16px',
     fontWeight: '600',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     marginBottom: '4px'
   },
   
   cardBrand: {
     fontSize: '12px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   
   inactiveBadge: {
@@ -642,7 +642,7 @@ const styles = {
   
   cardLimitLabel: {
     fontSize: '12px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   
   cardLimitValue: {
@@ -653,7 +653,7 @@ const styles = {
   
   cardNoLimit: {
     fontSize: '12px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontStyle: 'italic',
     marginBottom: '8px'
   },
@@ -665,7 +665,7 @@ const styles = {
   
   cardDate: {
     fontSize: '12px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     display: 'flex',
     gap: '4px'
   },
@@ -673,14 +673,14 @@ const styles = {
   cardActions: {
     display: 'flex',
     gap: '12px',
-    borderTop: '1px solid #334155',
+    borderTop: '1px solid var(--app-border)',
     paddingTop: '12px'
   },
   
   actionButton: {
     background: 'transparent',
     border: 'none',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontSize: '12px',
     display: 'flex',
     alignItems: 'center',
@@ -702,14 +702,14 @@ const styles = {
     width: '40px',
     height: '40px',
     border: '3px solid rgba(51, 65, 85, 0.3)',
-    borderTop: '3px solid #3b82f6',
+    borderTop: '3px solid var(--app-primary)',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite'
   },
   
   loadingText: {
     marginTop: '16px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontSize: '14px'
   },
   
@@ -720,28 +720,28 @@ const styles = {
     justifyContent: 'center',
     padding: '60px 20px',
     textAlign: 'center' as const,
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '20px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   
   emptyTitle: {
     fontSize: '18px',
     fontWeight: '600',
     margin: '20px 0 8px 0',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   emptyText: {
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginBottom: '24px',
     maxWidth: '300px'
   },
   
   emptyButton: {
     padding: '12px 24px',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     border: 'none',
     borderRadius: '10px',
     color: 'white',
@@ -760,7 +760,7 @@ const styles = {
     width: '56px',
     height: '56px',
     borderRadius: '50%',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     color: 'white',
     border: 'none',
     boxShadow: '0 4px 12px rgba(59, 130, 246, 0.5)',
@@ -786,18 +786,18 @@ const styles = {
   },
   
   modalContent: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '20px',
     maxWidth: '500px',
     width: '100%',
     maxHeight: '90vh',
     overflowY: 'auto' as const,
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   
   modalHeader: {
     padding: '20px',
-    borderBottom: '1px solid #334155',
+    borderBottom: '1px solid var(--app-border)',
     display: 'flex',
     alignItems: 'center',
     gap: '12px'
@@ -807,7 +807,7 @@ const styles = {
     width: '40px',
     height: '40px',
     borderRadius: '10px',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -817,7 +817,7 @@ const styles = {
   modalTitle: {
     fontSize: '18px',
     fontWeight: '600',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     margin: 0
   },
   
@@ -833,27 +833,27 @@ const styles = {
     display: 'block',
     fontSize: '14px',
     fontWeight: '600',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     marginBottom: '8px'
   },
   
   formInput: {
     width: '100%',
     padding: '10px 12px',
-    background: '#0f172a',
-    border: '1px solid #334155',
+    background: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px'
   },
   
   formSelect: {
     width: '100%',
     padding: '10px 12px',
-    background: '#0f172a',
-    border: '1px solid #334155',
+    background: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px'
   },
   
@@ -873,15 +873,15 @@ const styles = {
     width: '50px',
     height: '40px',
     padding: '4px',
-    background: '#0f172a',
-    border: '1px solid #334155',
+    background: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '8px',
     cursor: 'pointer'
   },
   
   colorValue: {
     fontSize: '13px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontFamily: 'monospace'
   },
   
@@ -900,7 +900,7 @@ const styles = {
   
   checkboxLabel: {
     fontSize: '14px',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     cursor: 'pointer'
   },
   
@@ -914,16 +914,16 @@ const styles = {
   modalCancel: {
     padding: '12px',
     background: 'transparent',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontWeight: '600',
     cursor: 'pointer'
   },
   
   modalConfirm: {
     padding: '12px',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     border: 'none',
     borderRadius: '10px',
     color: 'white',

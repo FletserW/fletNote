@@ -61,7 +61,7 @@ const BudgetsScreen: React.FC = () => {
       id: '3',
       categoryId: 'transporte',
       categoryName: 'Transporte',
-      categoryColor: '#3b82f6',
+      categoryColor: 'var(--app-primary)',
       valueLimit: 300,
       spent: 320,
       period: 'mensal',
@@ -109,7 +109,7 @@ const BudgetsScreen: React.FC = () => {
       case 'safe': return '#10b981';
       case 'warning': return '#f59e0b';
       case 'exceeded': return '#ef4444';
-      default: return '#3b82f6';
+      default: return 'var(--app-primary)';
     }
   };
 
@@ -146,14 +146,14 @@ const BudgetsScreen: React.FC = () => {
       {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate(-1)} style={styles.backButton}>
-          <ArrowLeft size={24} color="#f8fafc" />
+          <ArrowLeft size={24} color="var(--app-text)" />
         </button>
         <div>
           <h1 style={styles.title}>Orçamentos</h1>
           <p style={styles.subtitle}>Controle seus gastos por categoria</p>
         </div>
         <button style={styles.settingsButton}>
-          <Settings size={24} color="#94a3b8" />
+          <Settings size={24} color="var(--app-text-muted)" />
         </button>
       </div>
 
@@ -161,7 +161,7 @@ const BudgetsScreen: React.FC = () => {
       <div style={styles.summaryCard}>
         <div style={styles.summaryHeader}>
           <div style={styles.summaryIcon}>
-            <TrendingUp size={24} color="#f8fafc" />
+            <TrendingUp size={24} color="var(--app-text)" />
           </div>
           <div>
             <h3 style={styles.summaryTitle}>Resumo do Mês</h3>
@@ -202,7 +202,7 @@ const BudgetsScreen: React.FC = () => {
                 width: `${Math.min((totalSpent / totalBudgeted) * 100, 100)}%`,
                 background: totalSpent > totalBudgeted 
                   ? 'linear-gradient(90deg, #ef4444, #dc2626)'
-                  : 'linear-gradient(90deg, #3b82f6, #2563eb)'
+                  : 'linear-gradient(90deg, var(--app-primary), #2563eb)'
               }}
             />
           </div>
@@ -234,7 +234,7 @@ const BudgetsScreen: React.FC = () => {
 
         <div style={styles.filterRow}>
           <div style={styles.filterSelect}>
-            <Calendar size={16} color="#94a3b8" />
+            <Calendar size={16} color="var(--app-text-muted)" />
             <select 
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
@@ -264,11 +264,11 @@ const BudgetsScreen: React.FC = () => {
                   <h3 style={styles.categoryName}>{budget.categoryName}</h3>
                   <div style={styles.budgetDetails}>
                     <span style={styles.budgetDetail}>
-                      <Repeat size={12} color="#94a3b8" />
+                      <Repeat size={12} color="var(--app-text-muted)" />
                       {budget.period === 'mensal' ? 'Mensal' : 'Anual'}
                     </span>
                     <span style={styles.budgetDetail}>
-                      <Calendar size={12} color="#94a3b8" />
+                      <Calendar size={12} color="var(--app-text-muted)" />
                       {budget.autoRenew ? 'Renovação automática' : 'Sem renovação'}
                     </span>
                   </div>
@@ -278,7 +278,7 @@ const BudgetsScreen: React.FC = () => {
                 style={styles.moreButton}
                 onClick={() => handleEditBudget(budget.id)}
               >
-                <MoreVertical size={20} color="#94a3b8" />
+                <MoreVertical size={20} color="var(--app-text-muted)" />
               </button>
             </div>
 
@@ -361,7 +361,7 @@ const BudgetsScreen: React.FC = () => {
 
       {/* Botão para Adicionar Novo Orçamento */}
       <button style={styles.fab} onClick={handleAddBudget}>
-        <Plus size={24} color="#f8fafc" />
+        <Plus size={24} color="var(--app-text)" />
       </button>
     </div>
   );
@@ -369,10 +369,10 @@ const BudgetsScreen: React.FC = () => {
 
 const styles = {
   container: {
-    backgroundColor: '#0f172a',
+    backgroundColor: 'var(--app-surface)',
     minHeight: '100vh',
     padding: '20px 16px',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   header: {
     display: 'flex',
@@ -404,21 +404,21 @@ const styles = {
     fontSize: '24px',
     fontWeight: '700',
     margin: '0',
-    background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+    background: 'var(--app-gradient-title)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     backgroundClip: 'text'
   },
   subtitle: {
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     margin: '4px 0 0 0'
   },
   summaryCard: {
-    backgroundColor: '#1e293b',
+    backgroundColor: 'var(--app-surface-elevated)',
     borderRadius: '20px',
     padding: '20px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
     marginBottom: '16px'
   },
@@ -431,7 +431,7 @@ const styles = {
     width: '48px',
     height: '48px',
     borderRadius: '12px',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -441,11 +441,11 @@ const styles = {
     fontSize: '18px',
     fontWeight: '600',
     margin: '0',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   summaryPeriod: {
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     margin: '4px 0 0 0'
   },
   summaryGrid: {
@@ -461,14 +461,14 @@ const styles = {
   },
   summaryLabel: {
     fontSize: '12px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     margin: '0 0 4px 0'
   },
   summaryValue: {
     fontSize: '18px',
     fontWeight: '700',
     margin: '0',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   overallProgress: {
     marginTop: '20px'
@@ -480,16 +480,16 @@ const styles = {
   },
   progressLabel: {
     fontSize: '12px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   progressPercentage: {
     fontSize: '12px',
     fontWeight: '600',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   progressBar: {
     height: '8px',
-    backgroundColor: '#334155',
+    backgroundColor: 'var(--app-border)',
     borderRadius: '10px',
     overflow: 'hidden'
   },
@@ -499,10 +499,10 @@ const styles = {
     transition: 'width 0.3s ease'
   },
   filterCard: {
-    backgroundColor: '#1e293b',
+    backgroundColor: 'var(--app-surface-elevated)',
     borderRadius: '20px',
     padding: '16px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     marginBottom: '16px'
   },
   filterTabs: {
@@ -513,19 +513,19 @@ const styles = {
   filterTab: {
     flex: 1,
     padding: '10px 16px',
-    backgroundColor: '#0f172a',
-    border: '1px solid #334155',
+    backgroundColor: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '12px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontSize: '14px',
     fontWeight: '500',
     cursor: 'pointer',
     transition: 'all 0.2s ease'
   },
   filterTabActive: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderColor: '#3b82f6',
-    color: '#3b82f6'
+    backgroundColor: 'var(--app-primary-soft)',
+    borderColor: 'var(--app-primary)',
+    color: 'var(--app-primary)'
   },
   filterRow: {
     display: 'flex',
@@ -537,15 +537,15 @@ const styles = {
     alignItems: 'center',
     gap: '8px',
     padding: '10px 12px',
-    backgroundColor: '#0f172a',
-    border: '1px solid #334155',
+    backgroundColor: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '10px'
   },
   select: {
     flex: 1,
     backgroundColor: 'transparent',
     border: 'none',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px',
     outline: 'none'
   },
@@ -556,10 +556,10 @@ const styles = {
     marginBottom: '80px'
   },
   budgetCard: {
-    backgroundColor: '#1e293b',
+    backgroundColor: 'var(--app-surface-elevated)',
     borderRadius: '20px',
     padding: '20px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
   },
   budgetHeader: {
@@ -582,7 +582,7 @@ const styles = {
     fontSize: '16px',
     fontWeight: '600',
     margin: '0 0 4px 0',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   budgetDetails: {
     display: 'flex',
@@ -593,7 +593,7 @@ const styles = {
     alignItems: 'center',
     gap: '4px',
     fontSize: '12px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   moreButton: {
     backgroundColor: 'transparent',
@@ -644,17 +644,17 @@ const styles = {
   actionButton: {
     flex: 1,
     padding: '12px 16px',
-    backgroundColor: '#0f172a',
-    border: '1px solid #334155',
+    backgroundColor: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '12px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '14px',
     fontWeight: '500',
     cursor: 'pointer',
     transition: 'all 0.2s ease'
   },
   actionButtonPrimary: {
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     border: 'none'
   },
   fab: {
@@ -664,7 +664,7 @@ const styles = {
     width: '56px',
     height: '56px',
     borderRadius: '50%',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     border: 'none',
     color: 'white',
     boxShadow: '0 4px 12px rgba(59, 130, 246, 0.5)',

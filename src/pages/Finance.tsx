@@ -607,7 +607,7 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
       bottom: "320px",
       left: "20px",
       padding: "10px 15px",
-      background: "#3b82f6",
+      background: "var(--app-primary)",
       color: "white",
       border: "none",
       borderRadius: "8px",
@@ -1428,7 +1428,7 @@ const migrateExistingBalance = async () => {
       bottom: "280px",
       left: "20px",
       padding: "10px 15px",
-      background: isSyncing ? "#64748b" : "#10b981",
+      background: isSyncing ? "var(--app-text-subtle)" : "#10b981",
       color: "white",
       border: "none",
       borderRadius: "8px",
@@ -1603,7 +1603,7 @@ Faltam localmente: ${missingLocally.length}`);
         <div style={styles.headerTop}>
           <div style={styles.headerLeft}>
             <h1 style={styles.title}>Finanças Pessoais</h1>
-            <h2>v1.29</h2>
+            <h2>v1.30</h2>
             <div style={styles.date}>
               {today
                 .toLocaleDateString("pt-BR", {
@@ -1770,7 +1770,7 @@ Faltam localmente: ${missingLocally.length}`);
     {previousMonthBalance > 0 && (
       <div style={styles.breakdownRow}>
         <div style={styles.breakdownLabel}>
-          <span style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ color: 'var(--app-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span style={{ fontSize: '12px' }}>📅</span>
             Acumulado (meses anteriores):
           </span>
@@ -1783,7 +1783,7 @@ Faltam localmente: ${missingLocally.length}`);
     
     <div style={styles.breakdownRow}>
       <div style={styles.breakdownLabel}>
-        <span style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <span style={{ color: 'var(--app-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span style={{ fontSize: '12px' }}>📊</span>
           {today.getMonth() + 1}/{today.getFullYear()}:
         </span>
@@ -1798,13 +1798,13 @@ Faltam localmente: ${missingLocally.length}`);
     
     <div style={{
       ...styles.breakdownRow,
-      borderTop: '1px solid #334155',
+      borderTop: '1px solid var(--app-border)',
       paddingTop: '8px',
       marginTop: '8px',
       fontWeight: '600'
     }}>
       <div style={styles.breakdownLabel}>
-        <span style={{ color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <span style={{ color: 'var(--app-text)', display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span style={{ fontSize: '12px' }}>💰</span>
           Saldo total:
         </span>
@@ -1825,12 +1825,12 @@ Faltam localmente: ${missingLocally.length}`);
     <div style={{
       marginTop: '12px',
       padding: '10px',
-      background: 'rgba(59, 130, 246, 0.1)',
-      border: '1px solid #3b82f6',
+      background: 'var(--app-primary-soft)',
+      border: '1px solid var(--app-primary)',
       borderRadius: '8px',
       textAlign: 'center' as const
     }}>
-      <div style={{ color: '#cbd5e1', fontSize: '13px', marginBottom: '8px' }}>
+      <div style={{ color: 'var(--app-text-secondary)', fontSize: '13px', marginBottom: '8px' }}>
         ⚠️ Início do mês detectado
       </div>
       <button
@@ -1879,13 +1879,13 @@ Faltam localmente: ${missingLocally.length}`);
 <div style={{
   ...styles.card,
   marginTop: '12px',
-  background: 'rgba(30, 41, 59, 0.5)',
-  border: '1px solid #334155'
+  background: 'var(--app-soft-panel-muted)',
+  border: '1px solid var(--app-border)'
 }}>
   <div style={styles.cardHeader}>
     <div style={{
       ...styles.cardIcon,
-      background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+      background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
       width: '36px',
       height: '36px'
     }}>
@@ -1920,7 +1920,7 @@ Faltam localmente: ${missingLocally.length}`);
     justifyContent: 'center',
     marginTop: '12px',
     paddingTop: '12px',
-    borderTop: '1px solid #334155'
+    borderTop: '1px solid var(--app-border)'
   }}>
     <span style={{...styles.balanceLabel, fontSize: '14px'}}>Saldo do mês</span>
     <span style={{ 
@@ -2011,13 +2011,13 @@ Faltam localmente: ${missingLocally.length}`);
 
           <div style={styles.progressValues}>
             <span style={styles.progressValue}>
-              <span style={{ color: "#94a3b8", fontSize: 14 }}>Guardado:</span>
+              <span style={{ color: "var(--app-text-muted)", fontSize: 14 }}>Guardado:</span>
               <span style={{ fontWeight: "600", marginLeft: 8 }}>
                 R$ {goal.saved.toFixed(2)}
               </span>
             </span>
             <span style={styles.progressValue}>
-              <span style={{ color: "#94a3b8", fontSize: 14 }}>Meta:</span>
+              <span style={{ color: "var(--app-text-muted)", fontSize: 14 }}>Meta:</span>
               <span style={{ fontWeight: "600", marginLeft: 8 }}>
                 R$ {goal.target.toFixed(2)}
               </span>
@@ -2067,8 +2067,8 @@ Faltam localmente: ${missingLocally.length}`);
                   ...styles.quickActionButton,
                   background:
                     value <= total && !isLoading
-                      ? "linear-gradient(135deg, #3b82f6, #2563eb)"
-                      : "#94a3b8",
+                      ? "linear-gradient(135deg, var(--app-primary), #2563eb)"
+                      : "var(--app-text-muted)",
                   cursor:
                     value <= total && !isLoading ? "pointer" : "not-allowed",
                   opacity: value <= total && !isLoading ? 1 : 0.6,
@@ -2205,7 +2205,7 @@ Faltam localmente: ${missingLocally.length}`);
                         background:
                           value <= goal.saved
                             ? "linear-gradient(135deg, #f59e0b, #d97706)"
-                            : "#94a3b8",
+                            : "var(--app-text-muted)",
                         cursor: value <= goal.saved ? "pointer" : "not-allowed",
                         opacity: value <= goal.saved ? 1 : 0.6,
                       }}
@@ -2554,7 +2554,7 @@ Faltam localmente: ${missingLocally.length}`);
           bottom: "240px",
           left: "20px",
           padding: "10px 15px",
-          background: "#3b82f6",
+          background: "var(--app-primary)",
           color: "white",
           border: "none",
           borderRadius: "8px",
@@ -2575,7 +2575,7 @@ Faltam localmente: ${missingLocally.length}`);
           bottom: "280px",
           left: "20px",
           padding: "10px 15px",
-          background: isSyncing ? "#64748b" : "#10b981",
+          background: isSyncing ? "var(--app-text-subtle)" : "#10b981",
           color: "white",
           border: "none",
           borderRadius: "8px",
@@ -2597,9 +2597,9 @@ const styles = {
 
   container: {
     padding: "20px 16px",
-    background: "#0f172a",
+    background: "var(--app-surface)",
     minHeight: "100vh",
-    color: "#f8fafc",
+    color: "var(--app-text)",
   },
 
   // HEADER
@@ -2623,7 +2623,7 @@ const styles = {
   title: {
     fontSize: "28px",
     fontWeight: "700" as const,
-    background: "linear-gradient(135deg, #60a5fa, #3b82f6)",
+    background: "var(--app-gradient-title)",
     backgroundClip: "text",
     WebkitBackgroundClip: "text",
     color: "transparent",
@@ -2632,7 +2632,7 @@ const styles = {
   },
   date: {
     fontSize: "14px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
   },
   dataSourceBadge: {
     padding: "8px 12px",
@@ -2658,39 +2658,39 @@ const styles = {
     height: 36,
     borderRadius: "50%",
     border: "none",
-    background: "#334155",
+    background: "var(--app-border)",
     display: "flex" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     cursor: "pointer",
     transition: "all 0.2s ease",
-    color: "#f8fafc",
+    color: "var(--app-text)",
   },
   userInfo: {
     display: "flex" as const,
     alignItems: "center" as const,
-    background: "#1e293b",
+    background: "var(--app-surface-elevated)",
     padding: "10px 14px",
     borderRadius: 12,
     fontSize: 14,
-    color: "#cbd5e1",
+    color: "var(--app-text-secondary)",
   },
   userBadge: {
     marginLeft: "auto",
     fontSize: 12,
     background: "rgba(59, 130, 246, 0.2)",
-    color: "#60a5fa",
+    color: "var(--app-primary)",
     padding: "3px 8px",
     borderRadius: 12,
     fontWeight: "500" as const,
   },
 
   card: {
-    background: "#1e293b",
+    background: "var(--app-surface-elevated)",
     borderRadius: "20px",
     padding: "20px",
     marginBottom: "16px",
-    border: "1px solid #334155",
+    border: "1px solid var(--app-border)",
     boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.3)",
   },
 
@@ -2704,7 +2704,7 @@ const styles = {
     width: "48px",
     height: "48px",
     borderRadius: "12px",
-    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+    background: "linear-gradient(135deg, var(--app-primary), #2563eb)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -2716,12 +2716,12 @@ const styles = {
     fontSize: "18px",
     fontWeight: "600",
     margin: 0,
-    color: "#f8fafc",
+    color: "var(--app-text)",
   },
 
   cardSubtitle: {
     fontSize: "14px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
     marginTop: "4px",
   },
 
@@ -2735,7 +2735,7 @@ const styles = {
   balanceInfo: {
     display: "flex",
     alignItems: "center",
-    background: "#0f172a",
+    background: "var(--app-surface)",
     borderRadius: "12px",
     padding: "12px",
   },
@@ -2749,14 +2749,14 @@ const styles = {
 
   balanceLabel: {
     fontSize: "12px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
     marginBottom: "4px",
   },
 
   balanceDivider: {
     width: "1px",
     height: "24px",
-    background: "#334155",
+    background: "var(--app-border)",
   },
 
   progressSection: {
@@ -2773,7 +2773,7 @@ const styles = {
   progressLabel: {
     fontSize: "14px",
     fontWeight: "600",
-    color: "#f8fafc",
+    color: "var(--app-text)",
   },
 
   progressPercentage: {
@@ -2784,7 +2784,7 @@ const styles = {
 
   progressBar: {
     height: "8px",
-    background: "#334155",
+    background: "var(--app-border)",
     borderRadius: "10px",
     overflow: "hidden",
     marginBottom: "16px",
@@ -2826,12 +2826,12 @@ const styles = {
   quickActions: {
     marginTop: "20px",
     paddingTop: "20px",
-    borderTop: "1px solid #334155",
+    borderTop: "1px solid var(--app-border)",
   },
 
   quickActionsLabel: {
     fontSize: "14px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
     marginBottom: "12px",
   },
 
@@ -2859,12 +2859,12 @@ const styles = {
   },
 
   navCard: {
-    background: "#1e293b",
+    background: "var(--app-surface-elevated)",
     borderRadius: "16px",
     padding: "16px",
     display: "flex",
     alignItems: "center",
-    border: "1px solid #334155",
+    border: "1px solid var(--app-border)",
     cursor: "pointer",
     transition: "all 0.2s ease",
   },
@@ -2888,22 +2888,22 @@ const styles = {
     fontSize: "16px",
     fontWeight: "600",
     margin: 0,
-    color: "#f8fafc",
+    color: "var(--app-text)",
   },
 
   navDescription: {
     fontSize: "13px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
     margin: "4px 0 0 0",
   },
 
   navArrow: {
-    color: "#64748b",
+    color: "var(--app-text-subtle)",
   },
 
   // INFO BOX
   infoBox: {
-    background: "rgba(59, 130, 246, 0.1)",
+    background: "var(--app-primary-soft)",
     border: "1px solid rgba(59, 130, 246, 0.3)",
     borderRadius: "12px",
     padding: "16px",
@@ -2919,13 +2919,13 @@ const styles = {
   infoTitle: {
     fontSize: "14px",
     fontWeight: "600" as const,
-    color: "#60a5fa",
+    color: "var(--app-primary)",
     margin: 0,
     marginBottom: "4px",
   },
   infoText: {
     fontSize: "12px",
-    color: "#cbd5e1",
+    color: "var(--app-text-secondary)",
     margin: 0,
     lineHeight: "1.4",
   },
@@ -2937,7 +2937,7 @@ const styles = {
     width: "56px",
     height: "56px",
     borderRadius: "50%",
-    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+    background: "linear-gradient(135deg, var(--app-primary), #2563eb)",
     border: "none",
     color: "white",
     fontSize: "24px",
@@ -2962,30 +2962,30 @@ const styles = {
     width: "50px",
     height: "50px",
     border: "4px solid rgba(51, 65, 85, 0.3)",
-    borderTop: "4px solid #3b82f6",
+    borderTop: "4px solid var(--app-primary)",
     borderRadius: "50%",
     animation: "spin 1s linear infinite",
   },
 
   loadingText: {
     marginTop: "16px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
     fontSize: "16px",
   },
 
   loadingTextSmall: {
     fontSize: "12px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
     marginTop: "8px",
   },
 
   dataSourceIndicator: {
     fontSize: "13px",
-    color: "#cbd5e1",
+    color: "var(--app-text-secondary)",
     textAlign: "center" as const,
     marginTop: "16px",
     padding: "8px 16px",
-    background: "#1e293b",
+    background: "var(--app-surface-elevated)",
     borderRadius: "12px",
     display: "flex" as const,
     alignItems: "center" as const,
@@ -3012,7 +3012,7 @@ const styles = {
     width: "40px",
     height: "40px",
     border: "3px solid rgba(51, 65, 85, 0.3)",
-    borderTop: "3px solid #3b82f6",
+    borderTop: "3px solid var(--app-primary)",
     borderRadius: "50%",
     animation: "spin 1s linear infinite",
   },
@@ -3027,7 +3027,7 @@ const styles = {
   syncProgressBar: {
     height: "100%",
     width: "100%",
-    background: "linear-gradient(90deg, #3b82f6, #60a5fa)",
+    background: "linear-gradient(90deg, var(--app-primary), var(--app-primary-strong))",
     animation: "progress 2s ease-in-out infinite",
     borderRadius: "2px",
   },
@@ -3043,7 +3043,7 @@ const styles = {
     justifyContent: "center" as const,
     cursor: "pointer",
     transition: "all 0.2s ease",
-    color: "#f8fafc",
+    color: "var(--app-text)",
     boxShadow: "0 2px 8px rgba(239, 68, 68, 0.3)",
   },
 
@@ -3053,7 +3053,7 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(15, 23, 42, 0.95)",
+    backgroundColor: "var(--app-overlay)",
     display: "flex" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
@@ -3062,12 +3062,12 @@ const styles = {
   },
 
   modalContent: {
-    background: "#1e293b",
+    background: "var(--app-surface-elevated)",
     borderRadius: "20px",
     padding: "24px",
     width: "90%",
     maxWidth: "400px",
-    border: "1px solid #334155",
+    border: "1px solid var(--app-border)",
     boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
   },
 
@@ -3085,7 +3085,7 @@ const styles = {
   modalTitle: {
     fontSize: "20px",
     fontWeight: "600" as const,
-    color: "#f8fafc",
+    color: "var(--app-text)",
     margin: 0,
   },
 
@@ -3094,14 +3094,14 @@ const styles = {
   },
 
   modalText: {
-    color: "#cbd5e1",
+    color: "var(--app-text-secondary)",
     fontSize: "15px",
     lineHeight: "1.5",
     marginBottom: "20px",
   },
 
   logoutInfo: {
-    background: "#0f172a",
+    background: "var(--app-surface)",
     borderRadius: "12px",
     padding: "16px",
     marginBottom: "24px",
@@ -3112,7 +3112,7 @@ const styles = {
     alignItems: "flex-start" as const,
     marginBottom: "12px",
     fontSize: "14px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
   },
 
   modalActions: {
@@ -3123,9 +3123,9 @@ const styles = {
   modalCancel: {
     flex: 1,
     padding: "12px",
-    border: "1px solid #334155",
+    border: "1px solid var(--app-border)",
     background: "transparent",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
     borderRadius: "10px",
     fontSize: "15px",
     fontWeight: "600" as const,
@@ -3199,28 +3199,28 @@ const styles = {
     display: "block" as const,
     fontSize: "14px",
     fontWeight: "600" as const,
-    color: "#f8fafc",
+    color: "var(--app-text)",
     marginBottom: "8px",
   },
 
   formInput: {
     width: "100%",
     padding: "12px",
-    background: "#0f172a",
-    border: "1px solid #334155",
+    background: "var(--app-surface)",
+    border: "1px solid var(--app-border)",
     borderRadius: "8px",
-    color: "#f8fafc",
+    color: "var(--app-text)",
     fontSize: "15px",
   },
 
   formHelp: {
     fontSize: "12px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
     marginTop: "4px",
   },
 
   withdrawInfo: {
-    background: "#0f172a",
+    background: "var(--app-surface)",
     borderRadius: "12px",
     padding: "16px",
     marginBottom: "20px",
@@ -3232,7 +3232,7 @@ const styles = {
     alignItems: "center" as const,
     marginBottom: "8px",
     fontSize: "14px",
-    color: "#cbd5e1",
+    color: "var(--app-text-secondary)",
   },
 
   withdrawAmount: {
@@ -3248,7 +3248,7 @@ const styles = {
   withdrawQuickLabel: {
     fontSize: "14px",
     fontWeight: "600" as const,
-    color: "#f8fafc",
+    color: "var(--app-text)",
     marginBottom: "12px",
   },
 
@@ -3289,11 +3289,11 @@ const styles = {
   // Adicione ao objeto styles:
 
 balanceBreakdown: {
-  background: '#0f172a',
+  background: 'var(--app-surface)',
   borderRadius: '8px',
   padding: '12px',
   marginTop: '12px',
-  border: '1px solid #334155'
+  border: '1px solid var(--app-border)'
 },
 
 breakdownRow: {
@@ -3305,11 +3305,11 @@ breakdownRow: {
 },
 
 breakdownLabel: {
-  color: '#cbd5e1'
+  color: 'var(--app-text-secondary)'
 },
 
 breakdownValue: {
-  color: '#f8fafc',
+  color: 'var(--app-text)',
   fontWeight: '500'
 },
 };

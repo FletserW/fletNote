@@ -168,9 +168,9 @@ export default function AnnualSummary() {
               style={{
                 ...styles.yearButton,
                 background: selectedYear === year 
-                  ? 'linear-gradient(135deg, #3b82f6, #2563eb)' 
-                  : '#1e293b',
-                color: selectedYear === year ? 'white' : '#94a3b8'
+                  ? 'linear-gradient(135deg, var(--app-primary), #2563eb)' 
+                  : 'var(--app-surface-elevated)',
+                color: selectedYear === year ? 'white' : 'var(--app-text-muted)'
               }}
             >
               {year}
@@ -207,7 +207,7 @@ export default function AnnualSummary() {
           <div style={{ 
             ...styles.summaryIcon, 
             background: totalBalance >= 0 
-              ? 'linear-gradient(135deg, #3b82f6, #2563eb)' 
+              ? 'linear-gradient(135deg, var(--app-primary), #2563eb)' 
               : 'linear-gradient(135deg, #f59e0b, #d97706)'
           }}>
             <Icons.Dollar />
@@ -216,7 +216,7 @@ export default function AnnualSummary() {
             <div style={styles.summaryLabel}>Saldo Anual</div>
             <div style={{
               ...styles.summaryValue,
-              color: totalBalance >= 0 ? '#3b82f6' : '#f59e0b'
+              color: totalBalance >= 0 ? 'var(--app-primary)' : '#f59e0b'
             }}>
               R$ {totalBalance.toFixed(2)}
             </div>
@@ -304,7 +304,7 @@ export default function AnnualSummary() {
                 <div style={styles.highlightMonth}>{selectedYear}</div>
                 <div style={{
                   ...styles.highlightValue,
-                  color: totalBalance >= 0 ? '#3b82f6' : '#f59e0b'
+                  color: totalBalance >= 0 ? 'var(--app-primary)' : '#f59e0b'
                 }}>
                   {totalBalance >= 0 ? 'Positivo' : 'Negativo'}
                 </div>
@@ -354,7 +354,7 @@ export default function AnnualSummary() {
                   </div>
                   <div style={{
                     ...styles.tableCell,
-                    color: month.total >= 0 ? '#3b82f6' : '#f59e0b',
+                    color: month.total >= 0 ? 'var(--app-primary)' : '#f59e0b',
                     fontWeight: '600'
                   }}>
                     R$ {month.total.toFixed(2)}
@@ -376,7 +376,7 @@ export default function AnnualSummary() {
               <div style={styles.tableSummaryItem}>
                 <span>Saldo Final:</span>
                 <strong style={{ 
-                  color: totalBalance >= 0 ? '#3b82f6' : '#f59e0b' 
+                  color: totalBalance >= 0 ? 'var(--app-primary)' : '#f59e0b' 
                 }}>
                   R$ {totalBalance.toFixed(2)}
                 </strong>
@@ -402,9 +402,9 @@ export default function AnnualSummary() {
 const styles = {
   container: {
     padding: '20px 16px',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     minHeight: '100vh',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   header: {
@@ -416,7 +416,7 @@ const styles = {
   backButton: {
     background: 'transparent',
     border: 'none',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     cursor: 'pointer',
     padding: '8px',
     marginRight: '12px',
@@ -435,7 +435,7 @@ const styles = {
     fontSize: '24px',
     fontWeight: '700',
     margin: 0,
-    background: 'linear-gradient(135deg, #60a5fa, #3b82f6)',
+    background: 'var(--app-gradient-title)',
     backgroundClip: 'text',
     WebkitBackgroundClip: 'text',
     color: 'transparent',
@@ -446,16 +446,16 @@ const styles = {
   
   subtitle: {
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginTop: '4px'
   },
   
   yearSelectorCard: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '16px',
     padding: '20px',
     marginBottom: '20px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   
   yearSelectorHeader: {
@@ -469,7 +469,7 @@ const styles = {
     fontSize: '18px',
     fontWeight: '600',
     margin: 0,
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   yearButtons: {
@@ -501,10 +501,10 @@ const styles = {
   },
   
   summaryCard: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '16px',
     padding: '20px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     display: 'flex',
     alignItems: 'center'
   },
@@ -526,7 +526,7 @@ const styles = {
   
   summaryLabel: {
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginBottom: '4px'
   },
   
@@ -538,15 +538,15 @@ const styles = {
   
   summarySubtitle: {
     fontSize: '12px',
-    color: '#64748b'
+    color: 'var(--app-text-subtle)'
   },
   
   chartCard: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '16px',
     padding: '20px',
     marginBottom: '20px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   
   chartHeader: {
@@ -560,7 +560,7 @@ const styles = {
     fontSize: '18px',
     fontWeight: '600',
     margin: 0,
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     display: 'flex',
     alignItems: 'center',
     gap: '8px'
@@ -571,7 +571,7 @@ const styles = {
     alignItems: 'center',
     gap: '6px',
     fontSize: '12px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   
   chartInfoText: {
@@ -590,7 +590,7 @@ const styles = {
     alignItems: 'center',
     gap: '8px',
     fontSize: '14px',
-    color: '#cbd5e1'
+    color: 'var(--app-text-secondary)'
   },
   
   legendColor: {
@@ -625,27 +625,27 @@ const styles = {
     fontSize: '18px',
     fontWeight: '600',
     margin: '0 0 8px 0',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   emptyChartText: {
     fontSize: '14px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   
   highlightsCard: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '16px',
     padding: '20px',
     marginBottom: '20px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   
   highlightsTitle: {
     fontSize: '18px',
     fontWeight: '600',
     margin: '0 0 20px 0',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   highlightsGrid: {
@@ -658,14 +658,14 @@ const styles = {
   },
   
   highlightItem: {
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     borderRadius: '12px',
     padding: '16px'
   },
   
   highlightLabel: {
     fontSize: '12px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginBottom: '8px'
   },
   
@@ -678,7 +678,7 @@ const styles = {
   highlightMonth: {
     fontSize: '16px',
     fontWeight: '600',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   highlightValue: {
@@ -687,17 +687,17 @@ const styles = {
   },
   
   tableCard: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '16px',
     padding: '20px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   
   tableTitle: {
     fontSize: '18px',
     fontWeight: '600',
     margin: '0 0 20px 0',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   tableLoading: {
@@ -712,14 +712,14 @@ const styles = {
     width: '40px',
     height: '40px',
     border: '3px solid rgba(51, 65, 85, 0.3)',
-    borderTop: '3px solid #3b82f6',
+    borderTop: '3px solid var(--app-primary)',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite'
   },
   
   loadingText: {
     marginTop: '16px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontSize: '14px'
   },
   
@@ -732,7 +732,7 @@ const styles = {
     gridTemplateColumns: '1fr 1fr 1fr 1fr',
     gap: '16px',
     padding: '12px 16px',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     borderRadius: '10px',
     marginBottom: '8px'
   },
@@ -740,7 +740,7 @@ const styles = {
   tableCellHeader: {
     fontSize: '14px',
     fontWeight: '600',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   },
   
   tableRow: {
@@ -748,7 +748,7 @@ const styles = {
     gridTemplateColumns: '1fr 1fr 1fr 1fr',
     gap: '16px',
     padding: '16px',
-    borderBottom: '1px solid #334155',
+    borderBottom: '1px solid var(--app-border)',
     alignItems: 'center'
   },
   
@@ -759,19 +759,19 @@ const styles = {
   monthName: {
     fontSize: '14px',
     fontWeight: '600',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   monthNumber: {
     fontSize: '12px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginTop: '2px'
   },
   
   tableSummary: {
     marginTop: '24px',
     paddingTop: '20px',
-    borderTop: '1px solid #334155',
+    borderTop: '1px solid var(--app-border)',
     display: 'grid',
     gridTemplateColumns: 'repeat(1, 1fr)',
     gap: '12px',
@@ -785,7 +785,7 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '12px 16px',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     borderRadius: '10px',
     fontSize: '14px'
   },
@@ -806,7 +806,7 @@ const styles = {
   
   emptyTableText: {
     fontSize: '14px',
-    color: '#94a3b8'
+    color: 'var(--app-text-muted)'
   }
 }
 

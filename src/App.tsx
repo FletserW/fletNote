@@ -2,7 +2,9 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AuthProvider } from './contexts/AuthProvider'; // Import do barrel
+import { DesignProvider } from './contexts/DesignContext';
 import AuthGuard from './components/AuthGuard';
+import DesignSwitcher from './components/DesignSwitcher';
 import Finance from './pages/Finance';
 import Calendar from './pages/Calendar';
 import Statement from './pages/Statement';
@@ -70,17 +72,20 @@ export default function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/*" element={
-            <AuthGuard>
-              <ProtectedLayout />
-            </AuthGuard>
-          } />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+    <DesignProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <DesignSwitcher />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/*" element={
+              <AuthGuard>
+                <ProtectedLayout />
+              </AuthGuard>
+            } />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </DesignProvider>
   );
 }

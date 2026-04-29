@@ -3,9 +3,9 @@
 
   container: {
     padding: "20px 16px",
-    background: "#0f172a",
+    background: "var(--app-surface)",
     minHeight: "100vh",
-    color: "#f8fafc",
+    color: "var(--app-text)",
   },
 
   // HEADER
@@ -29,7 +29,7 @@
   title: {
     fontSize: "28px",
     fontWeight: "700" as const,
-    background: "linear-gradient(135deg, #60a5fa, #3b82f6)",
+    background: "var(--app-gradient-title)",
     backgroundClip: "text",
     WebkitBackgroundClip: "text",
     color: "transparent",
@@ -38,7 +38,7 @@
   },
   date: {
     fontSize: "14px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
   },
   dataSourceBadge: {
     padding: "8px 12px",
@@ -64,39 +64,39 @@
     height: 36,
     borderRadius: "50%",
     border: "none",
-    background: "#334155",
+    background: "var(--app-border)",
     display: "flex" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     cursor: "pointer",
     transition: "all 0.2s ease",
-    color: "#f8fafc",
+    color: "var(--app-text)",
   },
   userInfo: {
     display: "flex" as const,
     alignItems: "center" as const,
-    background: "#1e293b",
+    background: "var(--app-surface-elevated)",
     padding: "10px 14px",
     borderRadius: 12,
     fontSize: 14,
-    color: "#cbd5e1",
+    color: "var(--app-text-secondary)",
   },
   userBadge: {
     marginLeft: "auto",
     fontSize: 12,
     background: "rgba(59, 130, 246, 0.2)",
-    color: "#60a5fa",
+    color: "var(--app-primary)",
     padding: "3px 8px",
     borderRadius: 12,
     fontWeight: "500" as const,
   },
 
   card: {
-    background: "#1e293b",
+    background: "var(--app-surface-elevated)",
     borderRadius: "20px",
     padding: "20px",
     marginBottom: "16px",
-    border: "1px solid #334155",
+    border: "1px solid var(--app-border)",
     boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.3)",
   },
 
@@ -110,7 +110,7 @@
     width: "48px",
     height: "48px",
     borderRadius: "12px",
-    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+    background: "linear-gradient(135deg, var(--app-primary), #2563eb)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -122,12 +122,12 @@
     fontSize: "18px",
     fontWeight: "600",
     margin: 0,
-    color: "#f8fafc",
+    color: "var(--app-text)",
   },
 
   cardSubtitle: {
     fontSize: "14px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
     marginTop: "4px",
   },
 
@@ -141,7 +141,7 @@
   balanceInfo: {
     display: "flex",
     alignItems: "center",
-    background: "#0f172a",
+    background: "var(--app-surface)",
     borderRadius: "12px",
     padding: "12px",
   },
@@ -155,14 +155,14 @@
 
   balanceLabel: {
     fontSize: "12px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
     marginBottom: "4px",
   },
 
   balanceDivider: {
     width: "1px",
     height: "24px",
-    background: "#334155",
+    background: "var(--app-border)",
   },
 
   progressSection: {
@@ -179,7 +179,7 @@
   progressLabel: {
     fontSize: "14px",
     fontWeight: "600",
-    color: "#f8fafc",
+    color: "var(--app-text)",
   },
 
   progressPercentage: {
@@ -190,7 +190,7 @@
 
   progressBar: {
     height: "8px",
-    background: "#334155",
+    background: "var(--app-border)",
     borderRadius: "10px",
     overflow: "hidden",
     marginBottom: "16px",
@@ -232,12 +232,12 @@
   quickActions: {
     marginTop: "20px",
     paddingTop: "20px",
-    borderTop: "1px solid #334155",
+    borderTop: "1px solid var(--app-border)",
   },
 
   quickActionsLabel: {
     fontSize: "14px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
     marginBottom: "12px",
   },
 
@@ -265,12 +265,12 @@
   },
 
   navCard: {
-    background: "#1e293b",
+    background: "var(--app-surface-elevated)",
     borderRadius: "16px",
     padding: "16px",
     display: "flex",
     alignItems: "center",
-    border: "1px solid #334155",
+    border: "1px solid var(--app-border)",
     cursor: "pointer",
     transition: "all 0.2s ease",
   },
@@ -294,22 +294,22 @@
     fontSize: "16px",
     fontWeight: "600",
     margin: 0,
-    color: "#f8fafc",
+    color: "var(--app-text)",
   },
 
   navDescription: {
     fontSize: "13px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
     margin: "4px 0 0 0",
   },
 
   navArrow: {
-    color: "#64748b",
+    color: "var(--app-text-subtle)",
   },
 
   // INFO BOX
   infoBox: {
-    background: "rgba(59, 130, 246, 0.1)",
+    background: "var(--app-primary-soft)",
     border: "1px solid rgba(59, 130, 246, 0.3)",
     borderRadius: "12px",
     padding: "16px",
@@ -325,13 +325,13 @@
   infoTitle: {
     fontSize: "14px",
     fontWeight: "600" as const,
-    color: "#60a5fa",
+    color: "var(--app-primary)",
     margin: 0,
     marginBottom: "4px",
   },
   infoText: {
     fontSize: "12px",
-    color: "#cbd5e1",
+    color: "var(--app-text-secondary)",
     margin: 0,
     lineHeight: "1.4",
   },
@@ -343,7 +343,7 @@
     width: "56px",
     height: "56px",
     borderRadius: "50%",
-    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+    background: "linear-gradient(135deg, var(--app-primary), #2563eb)",
     border: "none",
     color: "white",
     fontSize: "24px",
@@ -368,30 +368,30 @@
     width: "50px",
     height: "50px",
     border: "4px solid rgba(51, 65, 85, 0.3)",
-    borderTop: "4px solid #3b82f6",
+    borderTop: "4px solid var(--app-primary)",
     borderRadius: "50%",
     animation: "spin 1s linear infinite",
   },
 
   loadingText: {
     marginTop: "16px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
     fontSize: "16px",
   },
 
   loadingTextSmall: {
     fontSize: "12px",
-    color: "#94a3b8",
+    color: "var(--app-text-muted)",
     marginTop: "8px",
   },
 
   dataSourceIndicator: {
     fontSize: "13px",
-    color: "#cbd5e1",
+    color: "var(--app-text-secondary)",
     textAlign: "center" as const,
     marginTop: "16px",
     padding: "8px 16px",
-    background: "#1e293b",
+    background: "var(--app-surface-elevated)",
     borderRadius: "12px",
     display: "flex" as const,
     alignItems: "center" as const,
@@ -418,7 +418,7 @@
     width: "40px",
     height: "40px",
     border: "3px solid rgba(51, 65, 85, 0.3)",
-    borderTop: "3px solid #3b82f6",
+    borderTop: "3px solid var(--app-primary)",
     borderRadius: "50%",
     animation: "spin 1s linear infinite",
   },
@@ -433,7 +433,7 @@
 syncProgressBar: {
   height: '100%',
   width: '100%',
-  background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
+  background: 'linear-gradient(90deg, var(--app-primary), var(--app-primary-strong))',
   animation: 'progress 2s ease-in-out infinite',
   borderRadius: '2px'
 },

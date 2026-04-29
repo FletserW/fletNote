@@ -182,8 +182,8 @@ export default function ManageCategories() {
             ...styles.typeFilterButton,
             background: selectedType === 'expense' 
               ? 'linear-gradient(135deg, #ef4444, #dc2626)' 
-              : '#1e293b',
-            color: selectedType === 'expense' ? 'white' : '#94a3b8'
+              : 'var(--app-surface-elevated)',
+            color: selectedType === 'expense' ? 'white' : 'var(--app-text-muted)'
           }}
         >
           <Icons.Expense /> Gastos
@@ -194,8 +194,8 @@ export default function ManageCategories() {
             ...styles.typeFilterButton,
             background: selectedType === 'income' 
               ? 'linear-gradient(135deg, #10b981, #059669)' 
-              : '#1e293b',
-            color: selectedType === 'income' ? 'white' : '#94a3b8'
+              : 'var(--app-surface-elevated)',
+            color: selectedType === 'income' ? 'white' : 'var(--app-text-muted)'
           }}
         >
           <Icons.Income /> Entradas
@@ -235,8 +235,8 @@ export default function ManageCategories() {
               onDrop={(e) => !cat.isDefault && handleDrop(e, cat.id)}
               style={{
                 ...styles.categoryItem,
-                background: '#1e293b',
-                borderLeft: `4px solid ${cat.color || '#3b82f6'}`,
+                background: 'var(--app-surface-elevated)',
+                borderLeft: `4px solid ${cat.color || 'var(--app-primary)'}`,
                 opacity: draggedCategory === cat.id ? 0.5 : 1,
                 cursor: cat.isDefault ? 'default' : 'grab'
               }}
@@ -250,7 +250,7 @@ export default function ManageCategories() {
                 <div 
                   style={{
                     ...styles.categoryColor,
-                    background: cat.color || '#3b82f6'
+                    background: cat.color || 'var(--app-primary)'
                   }}
                 />
                 <div>
@@ -330,8 +330,8 @@ export default function ManageCategories() {
                 <label style={styles.formLabel}>Cor</label>
                 <div style={styles.colorPicker}>
                   {[
-                    '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
-                    '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'
+                    'var(--app-primary)', '#ef4444', '#10b981', '#f59e0b', 
+                    '#8b5cf6', '#ec4899', '#14b8a6', 'var(--app-text-subtle)'
                   ].map(color => (
                     <button
                       key={color}
@@ -366,7 +366,7 @@ export default function ManageCategories() {
                   }}
                   style={{
                     ...styles.modalConfirm,
-                    background: editingCategory.color || '#3b82f6'
+                    background: editingCategory.color || 'var(--app-primary)'
                   }}
                 >
                   Salvar Alterações
@@ -383,9 +383,9 @@ export default function ManageCategories() {
 const styles = {
   container: {
     padding: '20px 16px',
-    background: '#0f172a',
+    background: 'var(--app-surface)',
     minHeight: '100vh',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   header: {
@@ -397,7 +397,7 @@ const styles = {
   backButton: {
     background: 'transparent',
     border: 'none',
-    color: '#cbd5e1',
+    color: 'var(--app-text-secondary)',
     cursor: 'pointer',
     padding: '8px',
     marginRight: '12px',
@@ -412,7 +412,7 @@ const styles = {
     fontSize: '24px',
     fontWeight: '700',
     margin: 0,
-    background: 'linear-gradient(135deg, #60a5fa, #3b82f6)',
+    background: 'var(--app-gradient-title)',
     backgroundClip: 'text',
     WebkitBackgroundClip: 'text',
     color: 'transparent'
@@ -420,7 +420,7 @@ const styles = {
   
   subtitle: {
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginTop: '4px'
   },
   
@@ -462,14 +462,14 @@ const styles = {
     width: '40px',
     height: '40px',
     border: '3px solid rgba(51, 65, 85, 0.3)',
-    borderTop: '3px solid #3b82f6',
+    borderTop: '3px solid var(--app-primary)',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite'
   },
   
   loadingText: {
     marginTop: '16px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontSize: '14px'
   },
   
@@ -480,9 +480,9 @@ const styles = {
     justifyContent: 'center',
     padding: '60px 20px',
     textAlign: 'center' as const,
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '20px',
-    border: '1px solid #334155'
+    border: '1px solid var(--app-border)'
   },
   
   emptyIcon: {
@@ -494,19 +494,19 @@ const styles = {
     fontSize: '18px',
     fontWeight: '600',
     margin: '0 0 8px 0',
-    color: '#f8fafc'
+    color: 'var(--app-text)'
   },
   
   emptyText: {
     fontSize: '14px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginBottom: '24px',
     maxWidth: '300px'
   },
   
   emptyButton: {
     padding: '12px 24px',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     border: 'none',
     borderRadius: '10px',
     color: 'white',
@@ -521,10 +521,10 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '16px',
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '12px',
     marginBottom: '12px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     transition: 'all 0.2s ease'
   },
   
@@ -536,7 +536,7 @@ const styles = {
   },
   
   dragHandle: {
-    color: '#64748b',
+    color: 'var(--app-text-subtle)',
     cursor: 'grab'
   },
   
@@ -549,7 +549,7 @@ const styles = {
   categoryName: {
     fontSize: '16px',
     fontWeight: '600',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     display: 'flex',
     alignItems: 'center',
     gap: '8px'
@@ -559,7 +559,7 @@ const styles = {
   
   categoryType: {
     fontSize: '12px',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     marginTop: '2px'
   },
   
@@ -573,7 +573,7 @@ const styles = {
     height: '36px',
     borderRadius: '50%',
     border: 'none',
-    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    background: 'linear-gradient(135deg, var(--app-primary), #2563eb)',
     color: 'white',
     display: 'flex',
     alignItems: 'center',
@@ -620,7 +620,7 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    background: 'rgba(15, 23, 42, 0.95)',
+    background: 'var(--app-overlay)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -630,12 +630,12 @@ const styles = {
   },
 
   modalContent: {
-    background: '#1e293b',
+    background: 'var(--app-surface-elevated)',
     borderRadius: '20px',
     padding: '24px',
     width: '100%',
     maxWidth: '400px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)'
   },
 
@@ -655,7 +655,7 @@ const styles = {
   modalTitle: {
     fontSize: '20px',
     fontWeight: '600' as const,
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     margin: 0,
     marginBottom: '4px'
   },
@@ -666,7 +666,7 @@ const styles = {
     right: '0',
     background: 'transparent',
     border: 'none',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     fontSize: '24px',
     cursor: 'pointer',
     width: '32px',
@@ -690,17 +690,17 @@ const styles = {
     display: 'block' as const,
     fontSize: '14px',
     fontWeight: '600' as const,
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     marginBottom: '8px'
   },
 
   formInput: {
     width: '100%',
     padding: '12px 16px',
-    background: '#0f172a',
-    border: '1px solid #334155',
+    background: 'var(--app-surface)',
+    border: '1px solid var(--app-border)',
     borderRadius: '12px',
-    color: '#f8fafc',
+    color: 'var(--app-text)',
     fontSize: '15px',
     outline: 'none',
     transition: 'all 0.2s ease'
@@ -730,9 +730,9 @@ const styles = {
   modalCancel: {
     flex: 1,
     padding: '12px',
-    border: '1px solid #334155',
+    border: '1px solid var(--app-border)',
     background: 'transparent',
-    color: '#94a3b8',
+    color: 'var(--app-text-muted)',
     borderRadius: '12px',
     fontSize: '15px',
     fontWeight: '600' as const,
@@ -754,8 +754,8 @@ const styles = {
 
   defaultTag: {
     fontSize: '10px',
-    background: 'rgba(59, 130, 246, 0.1)',
-    color: '#3b82f6',
+    background: 'var(--app-primary-soft)',
+    color: 'var(--app-primary)',
     padding: '2px 6px',
     borderRadius: '10px',
     fontWeight: '500',
