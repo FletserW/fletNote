@@ -1110,7 +1110,7 @@ const migrateExistingBalance = async () => {
         return;
       }
 
-      if (amount > total) {
+      if (amount > availableBalance) {
         alert("Saldo insuficiente para guardar esse valor");
         return;
       }
@@ -1123,6 +1123,8 @@ const migrateExistingBalance = async () => {
           category: "Cofre",
           description: `Depósito no cofre: ${goal.name}`,
           date: new Date().toISOString(),
+          transferType: "vault_deposit",
+          excludeFromSummary: true,
         });
 
         // Atualiza meta localmente primeiro (feedback instantâneo)
@@ -1174,7 +1176,7 @@ const migrateExistingBalance = async () => {
       }
     },
     [
-      total,
+      availableBalance,
       goal,
       loadAllData,
       user,
@@ -1281,7 +1283,7 @@ const migrateExistingBalance = async () => {
         `Tem certeza que deseja retirar R$ ${amount.toFixed(2)} do cofre?\n\n` +
           `Após a retirada:\n` +
           `• Saldo no cofre: R$ ${(goal.saved - amount).toFixed(2)}\n` +
-          `• Saldo disponível: R$ ${(total + amount).toFixed(2)}`,
+          `• Saldo disponível: R$ ${(availableBalance + amount).toFixed(2)}`,
       );
 
       if (!confirmWithdraw) return;
@@ -1295,6 +1297,8 @@ const migrateExistingBalance = async () => {
         category: "Retirada do Cofre",
         description: `Retirada do cofre: ${goal.name}`,
         date: new Date().toISOString(),
+        transferType: "vault_withdrawal",
+        excludeFromSummary: true,
       });
 
       // Atualiza meta
@@ -1602,7 +1606,7 @@ Faltam localmente: ${missingLocally.length}`);
         <div style={isSimpleMode ? styles.simpleHeaderTop : styles.headerTop}>
           <div style={styles.headerLeft}>
             <h1 style={styles.title}>Finanças Pessoais</h1>
-            <h2>v1.31</h2>
+            <h2>v1.32</h2>
             <div style={styles.date}>
               {today
                 .toLocaleDateString("pt-BR", {
@@ -2068,14 +2072,14 @@ Faltam localmente: ${missingLocally.length}`);
                 style={{
                   ...styles.quickActionButton,
                   background:
-                    value <= total && !isLoading
+                    value <= availableBalance && !isLoading
                       ? "linear-gradient(135deg, var(--app-primary), #2563eb)"
                       : "var(--app-text-muted)",
                   cursor:
-                    value <= total && !isLoading ? "pointer" : "not-allowed",
-                  opacity: value <= total && !isLoading ? 1 : 0.6,
+                    value <= availableBalance && !isLoading ? "pointer" : "not-allowed",
+                  opacity: value <= availableBalance && !isLoading ? 1 : 0.6,
                 }}
-                disabled={value > total || isLoading}
+                disabled={value > availableBalance || isLoading}
               >
                 +R$ {value}
               </button>
@@ -2190,7 +2194,7 @@ Faltam localmente: ${missingLocally.length}`);
                 <div style={styles.withdrawInfoItem}>
                   <span>Saldo disponível:</span>
                   <span style={styles.withdrawAmount}>
-                    R$ {total.toFixed(2)}
+                    R$ {availableBalance.toFixed(2)}
                   </span>
                 </div>
               </div>

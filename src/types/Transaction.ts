@@ -8,6 +8,8 @@ export interface Transaction {
   date: string; // ISO
   createdAt?: string;
   userId?: string; // Para Firebase
+  transferType?: 'vault_deposit' | 'vault_withdrawal';
+  excludeFromSummary?: boolean;
 }
 
 // Se quiser tipos separados para local e firebase:

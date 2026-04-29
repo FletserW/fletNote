@@ -141,7 +141,9 @@ export const getUserTransactions = async (userId: string): Promise<Transaction[]
         date: data.date,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt, // ADICIONE ESTA LINHA
-  userId: data.userId // ADICIONE ESTA LINHA (opcional)
+        userId: data.userId, // ADICIONE ESTA LINHA (opcional)
+        transferType: data.transferType || undefined,
+        excludeFromSummary: data.excludeFromSummary === true
 
       });
     });
@@ -180,6 +182,8 @@ export const syncTransactions = async (userId: string, transactions: Transaction
         category: tx.category,
         description: tx.description || '',
         date: tx.date,
+        transferType: tx.transferType || null,
+        excludeFromSummary: tx.excludeFromSummary === true,
         createdAt: tx.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         syncedAt: Timestamp.now()
@@ -224,6 +228,8 @@ export const addTransaction = async (
       category: transactionToSave.category,
       description: transactionToSave.description || '',
       date: transactionToSave.date,
+      transferType: transactionToSave.transferType || null,
+      excludeFromSummary: transactionToSave.excludeFromSummary === true,
       createdAt: transactionToSave.createdAt || new Date().toISOString(),
       userId: userId,
       updatedAt: new Date().toISOString(),

@@ -11,6 +11,8 @@ export type Transaction = {
   createdAt?: string;
   updatedAt?: string; // ADICIONE ESTA LINHA
   userId?: string; // ADICIONE ESTA LINHA (opcional)
+  transferType?: 'vault_deposit' | 'vault_withdrawal';
+  excludeFromSummary?: boolean;
 };
 
 export type Goal = {
@@ -268,6 +270,8 @@ async function trySaveToFirestore(transaction: Transaction, userId?: string): Pr
         category: transaction.category,
         description: transaction.description,
         date: transaction.date,
+        transferType: transaction.transferType || null,
+        excludeFromSummary: transaction.excludeFromSummary === true,
         createdAt: transaction.createdAt || new Date().toISOString(),
         userId: firebaseUserId,
         updatedAt: new Date().toISOString(),

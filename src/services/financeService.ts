@@ -18,7 +18,136 @@ export type Transaction = {
   date: string; // ISO
   createdAt?: string;
   updatedAt?: string;
+  userId?: string;
+  transferType?: 'vault_deposit' | 'vault_withdrawal';
+  excludeFromSummary?: boolean;
 };
+
+type SummaryMode = 'financial' | 'cashflow';
+
+const isVaultCategory = (category?: string): boolean => {
+  const normalizedCategory = (category || '').trim().toLowerCase();
+  return normalizedCategory === 'cofre' || normalizedCategory === 'retirada do cofre';
+};
+
+const isVaultDescription = (description?: string): boolean => {
+  const normalizedDescription = (description || '').trim().toLowerCase();
+  return normalizedDescription.startsWith('depósito no cofre:')
+    || normalizedDescription.startsWith('deposito no cofre:')
+    || normalizedDescription.startsWith('retirada do cofre:');
+};
+
+export const isInternalTransfer = (tx: Transaction): boolean => {
+  return tx.excludeFromSummary === true
+    || Boolean(tx.transferType)
+    || isVaultCategory(tx.category)
+    || isVaultDescription(tx.description);
+};
+
+function shouldIncludeInSummary(tx: Transaction, mode: SummaryMode): boolean {
+  return mode === 'cashflow' || !isInternalTransfer(tx);
+}
+
+function buildEmptySummary() {
+  return {
+    income: 0,
+    expense: 0,
+    total: 0
+  };
+}
+
+function addTransactionToSummary(
+  summary: { income: number; expense: number; total: number },
+  tx: Transaction,
+  mode: SummaryMode = 'financial'
+) {
+  if (!shouldIncludeInSummary(tx, mode)) return;
+
+  const amount = Math.abs(Number(tx.amount) || 0);
+
+  if (tx.type === 'income') {
+    summary.income += amount;
+  } else if (tx.type === 'expense') {
+    summary.expense += amount;
+  } else {
+    console.warn('Tipo de transação desconhecido:', tx.type);
+  }
+}
+
+function calculateTransactionTotal(transactions: Transaction[], mode: SummaryMode = 'financial'): number {
+  const summary = calculateSummary(transactions, mode);
+  return summary.total;
+}
+
+function getSignedAmount(tx: Transaction, mode: SummaryMode = 'financial'): number {
+  if (!shouldIncludeInSummary(tx, mode)) return 0;
+
+  const amount = Math.abs(Number(tx.amount) || 0);
+  if (tx.type === 'income') return amount;
+  if (tx.type === 'expense') return -amount;
+  return 0;
+}
+
+function getTransactionKey(tx: Transaction): string {
+  if (tx.id !== undefined && tx.id !== null) return tx.id.toString();
+  return [
+    tx.type,
+    tx.amount,
+    tx.category,
+    tx.description,
+    tx.date
+  ].join('|');
+}
+
+function mergeTransactionsById(...transactionGroups: Transaction[][]): Transaction[] {
+  const merged = new Map<string, Transaction>();
+
+  transactionGroups.flat().forEach(tx => {
+    if (!tx || typeof tx !== 'object') return;
+
+    const key = getTransactionKey(tx);
+    if (!merged.has(key)) {
+      merged.set(key, tx);
+    }
+  });
+
+  return Array.from(merged.values());
+}
+
+async function getAllTransactions(userId?: string): Promise<Transaction[]> {
+  const localTransactions = await getTransactions();
+
+  if (!userId) {
+    console.log(`💾 ${localTransactions.length} transações do localStorage`);
+    return localTransactions;
+  }
+
+  let firestoreTransactions: Transaction[] = [];
+  let userLocalTransactions: Transaction[] = [];
+
+  try {
+    firestoreTransactions = await firebaseService.getUserTransactions(userId);
+    console.log(`🔥 ${firestoreTransactions.length} transações do Firestore`);
+  } catch (firestoreError) {
+    console.warn('⚠️ Erro ao buscar transações do Firestore:', firestoreError);
+  }
+
+  try {
+    userLocalTransactions = await getTransactions(userId);
+    console.log(`💾 ${userLocalTransactions.length} transações locais do usuário`);
+  } catch (localError) {
+    console.warn('⚠️ Erro ao buscar transações locais do usuário:', localError);
+  }
+
+  const mergedTransactions = mergeTransactionsById(
+    firestoreTransactions,
+    userLocalTransactions,
+    localTransactions
+  );
+
+  console.log(`🔄 Total combinado: ${mergedTransactions.length} transações`);
+  return mergedTransactions;
+}
 
 
 /* ============================
@@ -79,58 +208,9 @@ export async function getTransactionsByFilter(
   try {
     console.log(`Buscando transações para ${month}/${year}, categoria: ${category || 'todas'}`);
     
-    // Verificar se há usuário logado no Firebase
     const user = firebaseService.getCurrentUser();
-    let allTransactions: Transaction[] = [];
-    
-    if (user?.uid) {
-      console.log(`👤 Usuário logado: ${user.uid}, buscando do Firestore`);
-      
-      // 🔥 PRIMEIRO: Buscar do Firestore
-      const firestoreTransactions = await firebaseService.getUserTransactions(user.uid);
-      console.log(`📊 ${firestoreTransactions.length} transações do Firestore`);
-      
-      // 🔥 SEGUNDO: Buscar do localStorage (para compatibilidade)
-      const localTransactions = await getTransactions(user.uid); // Passa o userId
-      console.log(`💾 ${localTransactions.length} transações do localStorage`);
-      
-      // 🔥 COMBINAR: Juntar ambas as fontes, dando prioridade ao Firestore
-      const combinedTransactions = [...firestoreTransactions];
-      
-      // Adicionar transações locais que não estão no Firestore
-      localTransactions.forEach(localTx => {
-        if (!firestoreTransactions.some(remoteTx => remoteTx.id === localTx.id)) {
-          combinedTransactions.push(localTx);
-        }
-      });
-      
-      allTransactions = combinedTransactions;
-      console.log(`🔄 Total combinado: ${allTransactions.length} transações`);
-      
-      // 🔥 SINCRONIZAR: Se houver transações locais que não estão no Firestore
-      const localOnlyTransactions = localTransactions.filter(localTx => 
-        !firestoreTransactions.some(remoteTx => remoteTx.id === localTx.id)
-      );
-      
-      if (localOnlyTransactions.length > 0 && user.uid) {
-        console.log(`🔄 ${localOnlyTransactions.length} transações locais precisam ser sincronizadas`);
-        // Sincronizar em background
-        setTimeout(async () => {
-          try {
-            await firebaseService.syncTransactions(user.uid, localOnlyTransactions);
-            console.log('✅ Transações locais sincronizadas com Firestore');
-          } catch (error) {
-            console.warn('⚠️ Erro ao sincronizar transações:', error);
-          }
-        }, 1000);
-      }
-      
-    } else {
-      // Usuário não logado - apenas do localStorage
-      allTransactions = await getTransactions();
-      console.log(`👤 Nenhum usuário logado, usando localStorage: ${allTransactions.length} transações`);
-    }
-    
+    const allTransactions = await getAllTransactions(user?.uid);
+
     // Se não houver transações, retorna array vazio sem erro
     if (!allTransactions || allTransactions.length === 0) {
       console.log('📭 Nenhuma transação encontrada');
@@ -198,58 +278,33 @@ export async function getTransactionsByFilter(
 /* ============================
    MONTH SUMMARY
 ============================ */
-export function calculateSummary(transactions: Transaction[]) {
-  let income = 0;
-  let expense = 0;
+export function calculateSummary(transactions: Transaction[], mode: SummaryMode = 'financial') {
+  const summary = buildEmptySummary();
 
-  console.log('Calculando resumo para', transactions?.length || 0, 'transações');
+  console.log('Calculando resumo para', transactions?.length || 0, 'transacoes');
 
-  // Se não houver transações, retorna zeros
   if (!transactions || !Array.isArray(transactions)) {
-    console.log('Nenhuma transação para calcular resumo');
-    return {
-      income: 0,
-      expense: 0,
-      total: 0
-    };
+    console.log('Nenhuma transacao para calcular resumo');
+    return summary;
   }
 
-  // Verifica se o array está vazio
   if (transactions.length === 0) {
-    console.log('Array de transações vazio');
-    return {
-      income: 0,
-      expense: 0,
-      total: 0
-    };
+    console.log('Array de transacoes vazio');
+    return summary;
   }
 
   transactions.forEach(tx => {
     try {
-      const amount = Math.abs(tx.amount || 0);
-      
-      if (tx.type === 'income') {
-        income += amount;
-        console.log(`+ Entrada: R$ ${amount} (${tx.description})`);
-      } else if (tx.type === 'expense') {
-        expense += amount;
-        console.log(`- Despesa: R$ ${amount} (${tx.description})`);
-      } else {
-        console.warn('Tipo de transação desconhecido:', tx.type);
-      }
+      addTransactionToSummary(summary, tx, mode);
     } catch (error) {
-      console.error('Erro ao processar transação no resumo:', tx, error);
+      console.error('Erro ao processar transacao no resumo:', tx, error);
     }
   });
 
-  const total = income - expense;
-  console.log(`Resumo: Entradas: R$ ${income}, Saídas: R$ ${expense}, Total: R$ ${total}`);
+  summary.total = summary.income - summary.expense;
+  console.log(`Resumo: Entradas: R$ ${summary.income}, Saidas: R$ ${summary.expense}, Total: R$ ${summary.total}`);
 
-  return {
-    income,
-    expense,
-    total
-  };
+  return summary;
 }
 
 /* ============================
@@ -262,24 +317,9 @@ export async function getAnnualSummary(
   try {
     console.log(`📊 Buscando resumo anual para ${year}, usuário: ${userId || 'local'}`);
     
-    // 1. Determinar a fonte de dados baseada no login
-    let allTransactions: Transaction[] = [];
-    
-    if (userId) {
-      // Usuário logado: buscar do Firestore PRIMEIRO
-      try {
-        allTransactions = await firebaseService.getUserTransactions(userId);
-        console.log(`🔥 ${allTransactions.length} transações do Firestore para ${year}`);
-      } catch (firestoreError) {
-        console.warn('⚠️ Erro ao buscar do Firestore, usando localStorage:', firestoreError);
-        allTransactions = await getTransactions(userId);
-      }
-    } else {
-      // Usuário não logado: apenas localStorage
-      allTransactions = await getTransactions();
-      console.log(`💾 ${allTransactions.length} transações do localStorage`);
-    }
-    
+    // 1. Usar a mesma fonte consolidada do extrato.
+    const allTransactions = await getAllTransactions(userId);
+
     // 2. Se não houver transações, retorna array com valores zerados
     if (!allTransactions || !Array.isArray(allTransactions) || allTransactions.length === 0) {
       console.log('📭 Nenhuma transação para resumo anual, retornando meses zerados');
@@ -313,16 +353,8 @@ export async function getAnnualSummary(
         
         // 5. Filtrar apenas transações do ano solicitado
         if (txYear === year) {
-          const amount = Math.abs(tx.amount || 0);
           const monthIndex = txMonth - 1;
-          
-          if (tx.type === 'income') {
-            summary[monthIndex].income += amount;
-          } else if (tx.type === 'expense') {
-            summary[monthIndex].expense += amount;
-          } else {
-            console.warn(`❓ Tipo de transação desconhecido: ${tx.type}`, tx);
-          }
+          addTransactionToSummary(summary[monthIndex], tx);
         }
       } catch (error) {
         console.error('❌ Erro ao processar transação no resumo anual:', tx, error);
@@ -380,8 +412,7 @@ export async function getTotalBalanceForStatement(
     
     // 1. Calcular saldo do mês atual
     const currentMonthTransactions = await getTransactionsByFilter(month, year);
-    const monthSummary = calculateSummary(currentMonthTransactions);
-    const monthBalance = monthSummary.total;
+    const monthBalance = calculateTransactionTotal(currentMonthTransactions, 'cashflow');
     
     // 2. Buscar saldo acumulado dos meses anteriores
     let accumulatedBalance = 0;
@@ -422,11 +453,11 @@ export async function getTotalBalanceForStatement(
     
     // Fallback: calcular apenas do mês atual
     const currentMonthTransactions = await getTransactionsByFilter(month, year);
-    const monthSummary = calculateSummary(currentMonthTransactions);
+    const monthBalance = calculateTransactionTotal(currentMonthTransactions, 'cashflow');
     
     return {
-      monthBalance: monthSummary.total,
-      accumulatedBalance: monthSummary.total,
+      monthBalance,
+      accumulatedBalance: monthBalance,
       previousBalance: 0
     };
   }
@@ -441,22 +472,8 @@ async function calculateManualAccumulatedBalance(
   try {
     console.log(`🧮 Calculando saldo acumulado manualmente...`);
     
-    // Obter TODAS as transações
-    let allTransactions: Transaction[] = [];
-    
-    if (userId) {
-      try {
-        allTransactions = await firebaseService.getUserTransactions(userId);
-        if (allTransactions.length === 0) {
-          allTransactions = await getTransactions(userId);
-        }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (error) {
-        allTransactions = await getTransactions(userId);
-      }
-    } else {
-      allTransactions = await getTransactions();
-    }
+    // Obter todas as transacoes usando a mesma fonte consolidada do extrato.
+    const allTransactions = await getAllTransactions(userId);
     
     // Se não houver transações, retorna 0
     if (!allTransactions || allTransactions.length === 0) {
@@ -483,14 +500,7 @@ async function calculateManualAccumulatedBalance(
     });
     
     // Calcular saldo total
-    let total = 0;
-    filteredTransactions.forEach(tx => {
-      if (tx.type === 'income') {
-        total += Math.abs(tx.amount || 0);
-      } else if (tx.type === 'expense') {
-        total -= Math.abs(tx.amount || 0);
-      }
-    });
+    const total = calculateTransactionTotal(filteredTransactions, 'cashflow');
     
     console.log(`✅ Saldo manual calculado: R$ ${total.toFixed(2)} (${filteredTransactions.length} transações)`);
     return total;
@@ -526,47 +536,8 @@ async function getPreviousMonthBalance(
     // Se não tiver saldo salvo, calcular manualmente para todos os meses anteriores
     console.log(`📝 Nenhum saldo salvo para ${prevMonth}/${prevYear}, calculando...`);
     
-    // Calcular saldo de TODOS os meses anteriores
-    let totalPreviousBalance = 0;
-    
-    // Se tiver usuário, buscar do Firestore
-    if (userId) {
-      try {
-        const allTransactions = await firebaseService.getUserTransactions(userId);
-        
-        for (const tx of allTransactions) {
-          try {
-            const date = new Date(tx.date);
-            if (isNaN(date.getTime())) continue;
-            
-            const txYear = date.getFullYear();
-            const txMonth = date.getMonth() + 1;
-            
-            // Verificar se a transação é de um mês anterior
-            const isPreviousMonth = (
-              txYear < currentYear || 
-              (txYear === currentYear && txMonth < currentMonth)
-            );
-            
-            if (isPreviousMonth) {
-              if (tx.type === 'income') {
-                totalPreviousBalance += Math.abs(tx.amount || 0);
-              } else if (tx.type === 'expense') {
-                totalPreviousBalance -= Math.abs(tx.amount || 0);
-              }
-            }
-          } catch (error) {
-            console.error('Erro ao processar transação:', tx, error);
-          }
-        }
-      } catch (error) {
-        console.warn('⚠️ Erro ao buscar do Firestore, usando cálculo local:', error);
-        totalPreviousBalance = await calculateAllPreviousMonths(currentMonth, currentYear, userId);
-      }
-    } else {
-      // Usuário não logado, calcular do localStorage
-      totalPreviousBalance = await calculateAllPreviousMonths(currentMonth, currentYear);
-    }
+    // Calcular saldo de TODOS os meses anteriores.
+    const totalPreviousBalance = await calculateAllPreviousMonths(currentMonth, currentYear, userId);
     
     return totalPreviousBalance;
     
@@ -584,7 +555,7 @@ async function calculateAllPreviousMonths(
 ): Promise<number> {
   try {
     // Buscar todas as transações
-    const allTransactions = await getTransactions(userId);
+    const allTransactions = await getAllTransactions(userId);
     
     let total = 0;
     
@@ -603,11 +574,7 @@ async function calculateAllPreviousMonths(
         );
         
         if (isPreviousMonth) {
-          if (tx.type === 'income') {
-            total += Math.abs(tx.amount || 0);
-          } else if (tx.type === 'expense') {
-            total -= Math.abs(tx.amount || 0);
-          }
+          total += getSignedAmount(tx, 'cashflow');
         }
       } catch (error) {
         console.error('Erro ao processar transação:', tx, error);

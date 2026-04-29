@@ -75,7 +75,7 @@ export default function AnnualSummary() {
       console.log(`📊 Carregando resumo anual para ${selectedYear}, usuário: ${userId || 'não logado'}`)
       
       // IMPORTANTE: Passar o userId para buscar os dados corretos
-      const summaryData = await getAnnualSummary(selectedYear)
+      const summaryData = await getAnnualSummary(selectedYear, userId || undefined)
       setData(summaryData)
       
       // Validação extra: verificar se os dados fazem sentido
