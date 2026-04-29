@@ -29,8 +29,8 @@ const DESIGN_OPTIONS: DesignOption[] = [
   },
   {
     id: 'assisted',
-    label: 'Fácil',
-    description: 'Base para o modo guiado'
+    label: 'Simples',
+    description: 'Visual acessível com textos e botões maiores'
   }
 ]
 

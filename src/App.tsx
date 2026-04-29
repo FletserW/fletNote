@@ -2,7 +2,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AuthProvider } from './contexts/AuthProvider'; // Import do barrel
-import { DesignProvider } from './contexts/DesignContext';
+import { DesignProvider, useDesign } from './contexts/DesignContext';
 import AuthGuard from './components/AuthGuard';
 import DesignSwitcher from './components/DesignSwitcher';
 import Finance from './pages/Finance';
@@ -23,8 +23,11 @@ import Cards from './pages/Cards';
 
 // Componente Layout protegido
 const ProtectedLayout = () => {
+  const { designMode } = useDesign();
+  const isSimpleMode = designMode === 'assisted';
+
   return (
-    <div style={{ paddingBottom: '70px' }}>
+    <div style={{ paddingBottom: isSimpleMode ? '96px' : '70px' }}>
       <Routes>
         <Route path="/" element={<Finance />} />
         <Route path="/calendar" element={<Calendar />} />

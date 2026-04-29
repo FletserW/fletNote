@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { addTransaction } from '../services/financeService'
 import { useNavigate } from 'react-router-dom'
 import { getCategories, addCategory, type Category,  } from '../services/categoryService'
+import { useDesign } from '../contexts/DesignContext'
 
 
 // Ícones
@@ -61,6 +62,8 @@ const Icons = {
 
 export default function AddTransaction() {
   const navigate = useNavigate()
+  const { designMode } = useDesign()
+  const isSimpleMode = designMode === 'assisted'
 
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [amount, setAmount] = useState('')
@@ -268,10 +271,10 @@ export default function AddTransaction() {
               style={{
                 ...styles.typeButton,
                 background: type === 'income' 
-                  ? 'linear-gradient(135deg, #10b981, #059669)' 
-                  : 'var(--app-surface-elevated)',
+                  ? (isSimpleMode ? 'var(--app-success)' : 'linear-gradient(135deg, #10b981, #059669)')
+                  : (isSimpleMode ? '#edf7f1' : 'var(--app-surface-elevated)'),
                 border: type === 'income' ? 'none' : '1px solid var(--app-border)',
-                color: type === 'income' ? 'white' : 'var(--app-text)'
+                color: type === 'income' ? 'white' : (isSimpleMode ? '#005c2e' : 'var(--app-text)')
               }}
               disabled={isLoading}
               type="button"
@@ -283,7 +286,7 @@ export default function AddTransaction() {
               </div>
               <span style={{
                 ...styles.typeButtonSubtitle,
-                color: type === 'income' ? 'rgba(255, 255, 255, 0.8)' : 'var(--app-text-muted)'
+                color: type === 'income' ? 'rgba(255, 255, 255, 0.92)' : (isSimpleMode ? '#005c2e' : 'var(--app-text-muted)')
               }}>Dinheiro recebido</span>
             </button>
             
@@ -295,10 +298,10 @@ export default function AddTransaction() {
               style={{
                 ...styles.typeButton,
                 background: type === 'expense' 
-                  ? 'linear-gradient(135deg, #ef4444, #dc2626)' 
-                  : 'var(--app-surface-elevated)',
+                  ? (isSimpleMode ? 'var(--app-danger)' : 'linear-gradient(135deg, #ef4444, #dc2626)')
+                  : (isSimpleMode ? '#fff0f2' : 'var(--app-surface-elevated)'),
                 border: type === 'expense' ? 'none' : '1px solid var(--app-border)',
-                color: type === 'expense' ? 'white' : 'var(--app-text)'
+                color: type === 'expense' ? 'white' : (isSimpleMode ? '#9f1a2a' : 'var(--app-text)')
               }}
               disabled={isLoading}
               type="button"
@@ -310,7 +313,7 @@ export default function AddTransaction() {
               </div>
               <span style={{
                 ...styles.typeButtonSubtitle,
-                color: type === 'expense' ? 'rgba(255, 255, 255, 0.8)' : 'var(--app-text-muted)'
+                color: type === 'expense' ? 'rgba(255, 255, 255, 0.92)' : (isSimpleMode ? '#9f1a2a' : 'var(--app-text-muted)')
               }}>Dinheiro gasto</span>
             </button>
           </div>

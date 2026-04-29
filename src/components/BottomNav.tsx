@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useDesign } from '../contexts/DesignContext'
 
 // Ícones SVG
 const Icons = {
@@ -34,29 +35,34 @@ const Icons = {
 }
 
 export default function BottomNav() {
+  const { designMode } = useDesign()
+  const isSimpleMode = designMode === 'assisted'
+  const navStyles = createStyles(isSimpleMode)
+
   return (
-    <nav style={styles.nav}>
+    <nav style={navStyles.nav}>
       {/* Financeiro */}
       <NavLink 
         to="/" 
         end 
         style={({ isActive }) => ({
           ...styles.navItem,
-          ...(isActive && styles.navItemActive)
+          ...navStyles.navItem,
+          ...(isActive && navStyles.navItemActive)
         })}
       >
         {({ isActive }) => (
           <>
-            <div style={styles.iconContainer}>
+            <div style={navStyles.iconContainer}>
               <Icons.Wallet active={isActive} />
             </div>
             <span style={{
-              ...styles.label,
+              ...navStyles.label,
               color: isActive ? 'var(--app-primary)' : 'var(--app-text-muted)'
             }}>
               Financeiro
             </span>
-            {isActive && <div style={styles.activeIndicator} />}
+            {isActive && <div style={navStyles.activeIndicator} />}
           </>
         )}
       </NavLink>
@@ -66,48 +72,50 @@ export default function BottomNav() {
         to="/statement" 
         style={({ isActive }) => ({
           ...styles.navItem,
-          ...(isActive && styles.navItemActive)
+          ...navStyles.navItem,
+          ...(isActive && navStyles.navItemActive)
         })}
       >
         {({ isActive }) => (
           <>
-            <div style={styles.iconContainer}>
+            <div style={navStyles.iconContainer}>
               <Icons.Chart active={isActive} />
             </div>
             <span style={{
-              ...styles.label,
+              ...navStyles.label,
               color: isActive ? 'var(--app-primary)' : 'var(--app-text-muted)'
             }}>
               Extrato
             </span>
-            {isActive && <div style={styles.activeIndicator} />}
+            {isActive && <div style={navStyles.activeIndicator} />}
           </>
         )}
       </NavLink>
 
       {/* Botão Central (Adicionar) */}
-      <div style={styles.centerSpacer} />
+      <div style={navStyles.centerSpacer} />
 
       {/* Cofre */}
       <NavLink 
         to="/annual" 
         style={({ isActive }) => ({
           ...styles.navItem,
-          ...(isActive && styles.navItemActive)
+          ...navStyles.navItem,
+          ...(isActive && navStyles.navItemActive)
         })}
       >
         {({ isActive }) => (
           <>
-            <div style={styles.iconContainer}>
+            <div style={navStyles.iconContainer}>
               <Icons.PiggyBank active={isActive} />
             </div>
             <span style={{
-              ...styles.label,
+              ...navStyles.label,
               color: isActive ? 'var(--app-primary)' : 'var(--app-text-muted)'
             }}>
               Anual
             </span>
-            {isActive && <div style={styles.activeIndicator} />}
+            {isActive && <div style={navStyles.activeIndicator} />}
           </>
         )}
       </NavLink>
@@ -117,21 +125,22 @@ export default function BottomNav() {
         to="/calendar" 
         style={({ isActive }) => ({
           ...styles.navItem,
-          ...(isActive && styles.navItemActive)
+          ...navStyles.navItem,
+          ...(isActive && navStyles.navItemActive)
         })}
       >
         {({ isActive }) => (
           <>
-            <div style={styles.iconContainer}>
+            <div style={navStyles.iconContainer}>
               <Icons.Calendar active={isActive} />
             </div>
             <span style={{
-              ...styles.label,
+              ...navStyles.label,
               color: isActive ? 'var(--app-primary)' : 'var(--app-text-muted)'
             }}>
               Folgas
             </span>
-            {isActive && <div style={styles.activeIndicator} />}
+            {isActive && <div style={navStyles.activeIndicator} />}
           </>
         )}
       </NavLink>
@@ -228,3 +237,44 @@ if (typeof document !== 'undefined') {
   `
   document.head.appendChild(style)
 }
+
+const createStyles = (isSimpleMode: boolean) => ({
+  ...styles,
+  nav: {
+    ...styles.nav,
+    height: isSimpleMode ? '88px' : styles.nav.height,
+    padding: isSimpleMode ? '0 12px' : styles.nav.padding,
+    boxShadow: isSimpleMode ? 'none' : styles.nav.boxShadow,
+    borderTop: isSimpleMode ? '2px solid var(--app-border)' : styles.nav.borderTop
+  },
+  navItem: {
+    ...styles.navItem,
+    minHeight: isSimpleMode ? '64px' : undefined,
+    gap: isSimpleMode ? '6px' : styles.navItem.gap,
+    padding: isSimpleMode ? '10px 8px' : styles.navItem.padding,
+    borderRadius: isSimpleMode ? '10px' : styles.navItem.borderRadius
+  },
+  navItemActive: {
+    ...styles.navItemActive,
+    background: isSimpleMode ? 'var(--app-primary-soft)' : styles.navItemActive.background,
+    outline: isSimpleMode ? '2px solid var(--app-primary)' : undefined
+  },
+  iconContainer: {
+    ...styles.iconContainer,
+    width: isSimpleMode ? '28px' : styles.iconContainer.width,
+    height: isSimpleMode ? '28px' : styles.iconContainer.height
+  },
+  label: {
+    ...styles.label,
+    fontSize: isSimpleMode ? '14px' : styles.label.fontSize,
+    fontWeight: isSimpleMode ? '700' : styles.label.fontWeight
+  },
+  activeIndicator: {
+    ...styles.activeIndicator,
+    display: isSimpleMode ? 'none' : undefined
+  },
+  centerSpacer: {
+    ...styles.centerSpacer,
+    width: isSimpleMode ? '48px' : styles.centerSpacer.width
+  }
+})

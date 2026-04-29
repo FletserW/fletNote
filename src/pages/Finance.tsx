@@ -19,6 +19,7 @@ import type { Goal } from "../types/Goal";
 import { firebaseService } from "../services/firebase";
 import { useFirebaseSync } from "../hooks/useFirebaseSync";
 import { getAuth, signOut } from "firebase/auth"; // Adicionar imports do Firebase Auth
+import { useDesign } from "../contexts/DesignContext";
 
 // Ícones simples em SVG
 const Icons = {
@@ -258,6 +259,8 @@ const Icons = {
 
 export default function Finance() {
   const navigate = useNavigate();
+  const { designMode } = useDesign();
+  const isSimpleMode = designMode === "assisted";
   const today = new Date();
   const isMounted = useRef(true);
   const { user, loading: authLoading } = useAuth();
@@ -593,10 +596,6 @@ Faltam no Firestore: ${inLocalNotFirestore.length}\n
       console.error("❌ Erro na verificação:", error);
       alert(`Erro: ${error instanceof Error ? error.message : String(error)}`);
     }
-  };
-
-  const confirmLogout = () => {
-    setShowLogoutModal(true);
   };
 
   // Adicione um botão para chamar esta função no JSX:
@@ -1600,10 +1599,10 @@ Faltam localmente: ${missingLocally.length}`);
     <div style={styles.container}>
       {/* HEADER com indicador de fonte de dados */}
       <div style={styles.header}>
-        <div style={styles.headerTop}>
+        <div style={isSimpleMode ? styles.simpleHeaderTop : styles.headerTop}>
           <div style={styles.headerLeft}>
             <h1 style={styles.title}>Finanças Pessoais</h1>
-            <h2>v1.30</h2>
+            <h2>v1.31</h2>
             <div style={styles.date}>
               {today
                 .toLocaleDateString("pt-BR", {
@@ -1644,7 +1643,7 @@ Faltam localmente: ${missingLocally.length}`);
             </div>
           )}
 
-          <div style={styles.headerRight}>
+          <div style={isSimpleMode ? styles.simpleHeaderRight : styles.headerRight}>
             <div
               style={{
                 ...styles.dataSourceBadge,
@@ -1670,25 +1669,15 @@ Faltam localmente: ${missingLocally.length}`);
             {/* BOTÃO DE REFRESH */}
             <button
               onClick={handleManualRefresh}
-              style={styles.refreshButton}
+              style={isSimpleMode ? styles.simpleHeaderButton : styles.refreshButton}
               disabled={isLoading}
               title="Atualizar dados"
             >
               <Icons.Refresh />
+              {isSimpleMode && <span>Atualizar</span>}
             </button>
 
             {/* BOTÃO DE LOGOUT (APENAS SE ESTIVER LOGADO) */}
-            {user && (
-              <div
-                style={styles.navCard}
-                onClick={confirmLogout} // Mudar para confirmLogout
-                onKeyPress={(e) => e.key === "Enter" && confirmLogout()}
-                tabIndex={0}
-                role="button"
-              >
-                {/* ... resto permanece igual ... */}
-              </div>
-            )}
           </div>
         </div>
 
@@ -1707,11 +1696,12 @@ Faltam localmente: ${missingLocally.length}`);
         {/* BOTÃO DE SYNC NO HEADER */}
         <button
           onClick={handleManualSync}
-          style={styles.refreshButton}
+          style={isSimpleMode ? styles.simpleHeaderButton : styles.refreshButton}
           disabled={isSyncing}
           title="Sincronizar com a nuvem"
         >
           {isSyncing ? <div style={styles.miniSpinner}></div> : <Icons.Cloud />}
+          {isSimpleMode && <span>Sincronizar</span>}
         </button>
       </div>
 
@@ -1856,7 +1846,19 @@ Faltam localmente: ${missingLocally.length}`);
   )}
   <button
   onClick={saveSpecificMonthBalance}
-  style={{
+  style={isSimpleMode ? {
+    width: '100%',
+    marginTop: '12px',
+    marginBottom: '12px',
+    padding: '14px 18px',
+    background: 'var(--app-warning)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '10px',
+    fontSize: '18px',
+    fontWeight: '700',
+    cursor: 'pointer'
+  } : {
     position: 'fixed',
     bottom: '120px',
     left: '20px',
@@ -2526,7 +2528,7 @@ Faltam localmente: ${missingLocally.length}`);
       <button
         onClick={() => navigate("/add")}
         style={{
-          ...styles.fab,
+          ...(isSimpleMode ? styles.simpleFab : styles.fab),
           opacity: isLoading ? 0.7 : 1,
           cursor: isLoading ? "not-allowed" : "pointer",
         }}
@@ -2534,6 +2536,7 @@ Faltam localmente: ${missingLocally.length}`);
         aria-label="Adicionar transação"
       >
         <Icons.Plus />
+        {isSimpleMode && <span>Adicionar transação</span>}
       </button>
 
       {/* LOADING OVERLAY sutil (apenas durante atualizações) */}
@@ -2612,12 +2615,25 @@ const styles = {
     alignItems: "flex-start" as const,
     marginBottom: 12,
   },
+  simpleHeaderTop: {
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    alignItems: "stretch" as const,
+    gap: 16,
+    marginBottom: 18,
+  },
   headerLeft: {
     flex: 1,
   },
   headerRight: {
     display: "flex" as const,
     alignItems: "center" as const,
+    gap: 12,
+  },
+  simpleHeaderRight: {
+    display: "flex" as const,
+    alignItems: "center" as const,
+    flexWrap: "wrap" as const,
     gap: 12,
   },
   title: {
@@ -2665,6 +2681,21 @@ const styles = {
     cursor: "pointer",
     transition: "all 0.2s ease",
     color: "var(--app-text)",
+  },
+  simpleHeaderButton: {
+    minHeight: 48,
+    padding: "10px 14px",
+    borderRadius: 10,
+    border: "2px solid var(--app-primary)",
+    background: "var(--app-primary)",
+    color: "white",
+    display: "flex" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8,
+    cursor: "pointer",
+    fontSize: 16,
+    fontWeight: "700" as const,
   },
   userInfo: {
     display: "flex" as const,
@@ -2946,6 +2977,26 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     boxShadow: "0 4px 12px rgba(59, 130, 246, 0.5)",
+    transition: "all 0.2s ease",
+  },
+  simpleFab: {
+    position: "fixed" as const,
+    bottom: "104px",
+    right: "16px",
+    minHeight: "56px",
+    padding: "0 18px",
+    borderRadius: "10px",
+    background: "var(--app-primary)",
+    border: "none",
+    color: "white",
+    fontSize: "18px",
+    fontWeight: "700" as const,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    boxShadow: "none",
     transition: "all 0.2s ease",
   },
 

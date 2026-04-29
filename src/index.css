@@ -19,6 +19,9 @@
   --app-primary: #3b82f6;
   --app-primary-soft: rgba(59, 130, 246, 0.1);
   --app-primary-strong: #2563eb;
+  --app-success: #10b981;
+  --app-danger: #ef4444;
+  --app-warning: #f59e0b;
   --app-soft-panel: rgba(30, 41, 59, 0.8);
   --app-soft-panel-muted: rgba(15, 23, 42, 0.5);
   --app-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
@@ -43,6 +46,9 @@
   --app-primary: #2563eb;
   --app-primary-soft: rgba(37, 99, 235, 0.1);
   --app-primary-strong: #1d4ed8;
+  --app-success: #059669;
+  --app-danger: #dc2626;
+  --app-warning: #d97706;
   --app-soft-panel: #edf5ff;
   --app-soft-panel-muted: #f7fbff;
   --app-shadow: 0 -8px 24px rgba(15, 23, 42, 0.12);
@@ -52,12 +58,27 @@
 }
 
 :root[data-design='assisted'] {
-  --app-bg: #eef6ff;
-  --app-text-body: #0f172a;
-  --app-text-secondary: #334155;
-  --app-primary: #0f6fff;
-  --app-soft-panel: #e4f1ff;
-  --app-soft-panel-muted: #f4f9ff;
+  --app-bg: #f8fafc;
+  --app-surface: #ffffff;
+  --app-surface-elevated: #ffffff;
+  --app-surface-muted: #eef2f7;
+  --app-border: #9aa8b8;
+  --app-text: #101828;
+  --app-text-body: #101828;
+  --app-text-secondary: #25364a;
+  --app-text-muted: #40566f;
+  --app-text-subtle: #667085;
+  --app-primary: #005fcc;
+  --app-primary-soft: #e8f1ff;
+  --app-primary-strong: #004799;
+  --app-success: #007a3d;
+  --app-danger: #c21f32;
+  --app-warning: #a86200;
+  --app-soft-panel: #eef5ff;
+  --app-soft-panel-muted: #f5f9ff;
+  --app-shadow: none;
+  --app-overlay: rgba(16, 24, 40, 0.55);
+  --app-gradient-title: linear-gradient(135deg, #005fcc, #005fcc);
 }
 
 body {
@@ -65,6 +86,12 @@ body {
   background: var(--app-bg);
   color: var(--app-text-body);
   transition: background 0.2s ease, color 0.2s ease;
+}
+
+:root[data-design='assisted'] body {
+  padding-top: 72px;
+  font-size: 18px;
+  line-height: 1.65;
 }
 
 button,
@@ -108,6 +135,101 @@ textarea {
 .design-switcher__button--active {
   background: var(--app-primary-soft);
   color: var(--app-primary);
+}
+
+:root[data-design='assisted'] h1,
+:root[data-design='assisted'] h2,
+:root[data-design='assisted'] h3,
+:root[data-design='assisted'] h4 {
+  color: var(--app-text) !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0 !important;
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+}
+
+:root[data-design='assisted'] h1 {
+  font-size: 32px !important;
+}
+
+:root[data-design='assisted'] h2 {
+  font-size: 28px !important;
+}
+
+:root[data-design='assisted'] h3 {
+  font-size: 22px !important;
+}
+
+:root[data-design='assisted'] h4 {
+  font-size: 20px !important;
+}
+
+:root[data-design='assisted'] p,
+:root[data-design='assisted'] span,
+:root[data-design='assisted'] label,
+:root[data-design='assisted'] div {
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+:root[data-design='assisted'] p,
+:root[data-design='assisted'] label {
+  font-size: 18px !important;
+}
+
+:root[data-design='assisted'] span {
+  font-size: max(16px, 1em) !important;
+}
+
+:root[data-design='assisted'] button:not(.design-switcher__button),
+:root[data-design='assisted'] input,
+:root[data-design='assisted'] select,
+:root[data-design='assisted'] textarea {
+  min-height: 48px !important;
+  font-size: 18px !important;
+  line-height: 1.35 !important;
+  border-radius: 10px !important;
+}
+
+:root[data-design='assisted'] input,
+:root[data-design='assisted'] select,
+:root[data-design='assisted'] textarea {
+  border: 2px solid var(--app-border) !important;
+  color: var(--app-text) !important;
+  background: #ffffff !important;
+}
+
+:root[data-design='assisted'] button:not(.design-switcher__button) {
+  padding: 12px 18px !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+}
+
+:root[data-design='assisted'] [style*='var(--app-surface-elevated)'],
+:root[data-design='assisted'] [style*='var(--app-soft-panel'],
+:root[data-design='assisted'] [style*='rgba(30, 41, 59'],
+:root[data-design='assisted'] [style*='rgba(15, 23, 42'] {
+  box-shadow: none !important;
+}
+
+:root[data-design='assisted'] [style*='border-radius'] {
+  border-radius: 12px !important;
+}
+
+:root[data-design='assisted'] .design-switcher {
+  top: 8px;
+  right: 16px;
+  gap: 6px;
+  padding: 6px;
+  border: 2px solid var(--app-border);
+  box-shadow: none;
+}
+
+:root[data-design='assisted'] .design-switcher__button {
+  min-height: 42px;
+  padding: 0 14px;
+  font-size: 15px;
 }
 
 @media (max-width: 520px) {

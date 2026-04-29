@@ -1,10 +1,10 @@
-import { Moon, Palette, Sun } from 'lucide-react'
+import { Accessibility, Moon, Sun } from 'lucide-react'
 import { useDesign, type DesignMode } from '../contexts/DesignContext'
 
 const Icons: Record<DesignMode, typeof Moon> = {
   dark: Moon,
   light: Sun,
-  assisted: Palette
+  assisted: Accessibility
 }
 
 export default function DesignSwitcher() {
