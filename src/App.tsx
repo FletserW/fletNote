@@ -15,9 +15,6 @@ import ManageCategories from './pages/ManageCategories';
 import DayOffSettings from './pages/dayoff-settings';
 import Budgets from './pages/Budgets';
 import BudgetForm from './components/BudgetForm';
-import RecurringExpenses from './pages/RecurringExpenses';
-import Cards from './pages/Cards';
-
 
 // Componente Layout protegido
 const ProtectedLayout = () => {
@@ -32,8 +29,6 @@ const ProtectedLayout = () => {
         <Route path="/categories" element={<ManageCategories />} />
         <Route path="/dayoff-settings" element={<DayOffSettings />} />
         <Route path="orcamentos" element={<Budgets />} />
-        <Route path="/recurring" element={<RecurringExpenses />} />
-        <Route path="/cards" element={<Cards />} />
       <Route
   path="orcamentos/novo"
   element={
