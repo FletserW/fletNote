@@ -2356,6 +2356,24 @@ Faltam localmente: ${missingLocally.length}`);
           </div>
         </div>
 
+       
+<div style={styles.navCard} onClick={() => navigate("/recurring")}>
+  <div
+    style={{
+      ...styles.navIcon,
+      background: "linear-gradient(135deg, #f59e0b, #d97706)",
+    }}
+  >
+    <Icons.Calendar />
+  </div>
+  <div style={styles.navContent}>
+    <h4 style={styles.navTitle}>Gastos Fixos</h4>
+    <p style={styles.navDescription}>Gerencie contas recorrentes</p>
+  </div>
+  <div style={styles.navArrow}>
+    <Icons.ArrowRight />
+  </div>
+</div>
         {!user && (
           <div style={styles.navCard} onClick={() => navigate("/login")}>
             <div
