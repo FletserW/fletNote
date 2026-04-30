@@ -43,24 +43,16 @@ const ProtectedLayout = () => {
   path="orcamentos/novo"
   element={
     <BudgetForm
-      onSave={(data) => {
-        console.log(data);
-      }}
-      onClose={() => {
-        console.log("fechar");
-      }}
+      onSave={() => {}}
+      onClose={() => {}}
     />
   }
 />
 
       <Route path="orcamentos/editar/:id" element={
     <BudgetForm
-      onSave={(data) => {
-        console.log(data);
-      }}
-      onClose={() => {
-        console.log("fechar");
-      }}
+      onSave={() => {}}
+      onClose={() => {}}
     />
   } />
       </Routes>

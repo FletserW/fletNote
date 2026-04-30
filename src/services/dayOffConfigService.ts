@@ -36,6 +36,8 @@ interface FirebaseDayOffConfig {
 
 export class DayOffConfigService {
   private userId: string;
+  private configsCache: DayOffConfig[] | null = null;
+  private configsPromise: Promise<DayOffConfig[]> | null = null;
 
   constructor(userId: string) {
     this.userId = userId;
@@ -43,115 +45,112 @@ export class DayOffConfigService {
 
   // ============ CONFIGURAÇÕES GERAIS ============
 
-  // Obter todas as configurações do usuário
-  async getUserConfigs(): Promise<DayOffConfig[]> {
-    console.log(`🔍 [DayOffConfigService] Buscando configurações para usuário: ${this.userId}`);
-    
+  // Obter todas as configuracoes do usuario
+  async getUserConfigs(options: { forceRefresh?: boolean } = {}): Promise<DayOffConfig[]> {
+    if (!options.forceRefresh && this.configsCache) {
+      return this.configsCache;
+    }
+
+    if (!options.forceRefresh && this.configsPromise) {
+      return this.configsPromise;
+    }
+
+    this.configsPromise = this.loadUserConfigs();
+
     try {
-      // Verificar se temos conexão com Firebase
+      return await this.configsPromise;
+    } finally {
+      this.configsPromise = null;
+    }
+  }
+
+  private async loadUserConfigs(): Promise<DayOffConfig[]> {
+    try {
       const db = getFirestoreDb();
-      console.log(`📊 [DayOffConfigService] Firebase disponível:`, !!db);
-      console.log(`📊 [DayOffConfigService] Firebase inicializado:`, db ? 'Sim' : 'Não');
-      
       if (db && this.userId) {
-        console.log(`🔥 [DayOffConfigService] Tentando Firestore...`);
-        
         try {
-          // Testar conexão com um timeout
-          const connectionPromise = getDocs(collection(db, 'users', this.userId, COLLECTIONS.DAY_OFF_CONFIGS));
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('Timeout Firestore')), 5000);
-          });
-          
-          const snapshot = await Promise.race([connectionPromise, timeoutPromise]);
-          console.log(`✅ [DayOffConfigService] Conexão Firestore OK. Documentos: ${snapshot.size}`);
-          
-          const configs: DayOffConfig[] = [];
-          
-          snapshot.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
-            const data = doc.data() as FirebaseDayOffConfig;
-            console.log(`📝 [DayOffConfigService] Processando: ${doc.id}`, data);
-            
-            // Criar objeto de configuração base
-            const baseConfig = {
-              id: doc.id,
-              userId: this.userId,
-              createdAt: this.parseFirestoreDate(data.createdAt),
-              description: data.description || 'Sem descrição'
-            };
-            
-            // Criar configuração específica baseada no tipo
-            if (data.type === 'fixed' && typeof data.dayOfWeek === 'number') {
-              configs.push({
-                ...baseConfig,
-                type: 'fixed',
-                dayOfWeek: data.dayOfWeek
-              } as FixedDayOff);
-              
-            } else if (data.type === 'regular' && typeof data.intervalDays === 'number') {
-              configs.push({
-                ...baseConfig,
-                type: 'regular',
-                intervalDays: data.intervalDays,
-                startDate: this.parseFirestoreDate(data.startDate)
-              } as RegularDayOff);
-              
-            } else if (data.type === 'extra') {
-              configs.push({
-                ...baseConfig,
-                type: 'extra',
-                date: this.parseFirestoreDate(data.date)
-              } as ExtraDayOff);
-            } else {
-              console.warn(`⚠️ [DayOffConfigService] Tipo desconhecido ou dados inválidos:`, data);
-            }
-          });
-          
-          console.log(`✅ [DayOffConfigService] ${configs.length} configurações do Firestore`);
-          
-          // Salvar cópia no localStorage como cache
-          this.saveToLocalStorage(configs);
-          
+          const snapshot = await Promise.race([
+            getDocs(collection(db, 'users', this.userId, COLLECTIONS.DAY_OFF_CONFIGS)),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout Firestore')), 2500))
+          ]);
+
+          const configs = this.parseSnapshot(snapshot.docs);
+          this.setLocalConfigs(configs);
           return configs;
-          
         } catch (firestoreError) {
-          console.warn(`⚠️ [DayOffConfigService] Erro no Firestore, usando cache local:`, firestoreError);
-          // Continuar para fallback do localStorage
+          console.warn('[DayOffConfigService] Firestore indisponivel, usando cache local:', firestoreError);
         }
       }
-      
-      // FALLBACK: localStorage
-      console.log(`💾 [DayOffConfigService] Usando localStorage como fallback...`);
-      const storageKey = `${LOCAL_STORAGE_KEYS.DAY_OFF_CONFIGS}_${this.userId}`;
-      const stored = localStorage.getItem(storageKey);
-      
-      console.log(`📦 [DayOffConfigService] Chave localStorage: ${storageKey}`);
-      console.log(`📦 [DayOffConfigService] Dados encontrados:`, stored ? 'Sim' : 'Não');
-      
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored) as any[];
-          console.log(`✅ [DayOffConfigService] ${parsed.length} configurações do localStorage`);
-          
-          // Converter strings para Date
-          return parsed.map((config: any) => ({
-            ...config,
-            createdAt: new Date(config.createdAt),
-            ...(config.type === 'regular' && { startDate: new Date(config.startDate) }),
-            ...(config.type === 'extra' && { date: new Date(config.date) })
-          })) as DayOffConfig[];
-        } catch (parseError) {
-          console.error(`❌ [DayOffConfigService] Erro ao parsear localStorage:`, parseError);
-        }
-      }
-      
-      console.log(`📭 [DayOffConfigService] Nenhuma configuração encontrada`);
-      return [];
-      
+
+      const configs = this.loadFromLocalStorage();
+      this.configsCache = configs;
+      return configs;
     } catch (error) {
-      console.error(`❌ [DayOffConfigService] Erro geral:`, error);
+      console.error('[DayOffConfigService] Erro geral:', error);
+      const configs = this.loadFromLocalStorage();
+      this.configsCache = configs;
+      return configs;
+    }
+  }
+
+  private parseSnapshot(docs: QueryDocumentSnapshot<DocumentData>[]): DayOffConfig[] {
+    const configs: DayOffConfig[] = [];
+
+    docs.forEach((doc) => {
+      const data = doc.data() as FirebaseDayOffConfig;
+      const baseConfig = {
+        id: doc.id,
+        userId: this.userId,
+        createdAt: this.parseFirestoreDate(data.createdAt),
+        description: data.description || 'Sem descricao'
+      };
+
+      if (data.type === 'fixed' && typeof data.dayOfWeek === 'number') {
+        configs.push({
+          ...baseConfig,
+          type: 'fixed',
+          dayOfWeek: data.dayOfWeek
+        } as FixedDayOff);
+      } else if (data.type === 'regular' && typeof data.intervalDays === 'number') {
+        configs.push({
+          ...baseConfig,
+          type: 'regular',
+          intervalDays: data.intervalDays,
+          startDate: this.parseFirestoreDate(data.startDate)
+        } as RegularDayOff);
+      } else if (data.type === 'extra') {
+        configs.push({
+          ...baseConfig,
+          type: 'extra',
+          date: this.parseFirestoreDate(data.date)
+        } as ExtraDayOff);
+      }
+    });
+
+    return configs;
+  }
+
+  private loadFromLocalStorage(): DayOffConfig[] {
+    try {
+      const stored = localStorage.getItem(LOCAL_STORAGE_KEYS.DAY_OFF_CONFIGS + '_' + this.userId);
+      if (!stored) return [];
+
+      const parsed = JSON.parse(stored) as any[];
+      return parsed.map((config: any) => ({
+        ...config,
+        createdAt: new Date(config.createdAt),
+        ...(config.type === 'regular' && { startDate: new Date(config.startDate) }),
+        ...(config.type === 'extra' && { date: new Date(config.date) })
+      })) as DayOffConfig[];
+    } catch (error) {
+      console.error('[DayOffConfigService] Erro ao carregar cache local:', error);
       return [];
     }
+  }
+
+  private setLocalConfigs(configs: DayOffConfig[]): void {
+    this.configsCache = configs;
+    this.saveToLocalStorage(configs);
   }
 
   // Função auxiliar para parsear datas do Firestore
@@ -196,7 +195,7 @@ async addConfig(config: Omit<DayOffConfig, 'id' | 'userId' | 'createdAt'>): Prom
     
     if (db && this.userId) {
       // 1. Salvar no Firestore PRIMEIRO
-      const configsRef = collection(db, 'users', this.userId, 'dayOffConfigs');
+      const configsRef = collection(db, 'users', this.userId, COLLECTIONS.DAY_OFF_CONFIGS);
       const docRef = await addDoc(configsRef, newConfig);
       configId = docRef.id;
       
@@ -214,7 +213,7 @@ async addConfig(config: Omit<DayOffConfig, 'id' | 'userId' | 'createdAt'>): Prom
     // 2. SEMPRE salvar no localStorage também
     const stored = await this.getUserConfigs();
     const updated = [...stored.filter(c => c.id !== configId), configWithId];
-    this.saveToLocalStorage(updated);
+    this.setLocalConfigs(updated);
     
     console.log(`💾 Salvo localmente: ${configId}`);
     
@@ -238,14 +237,14 @@ async addConfig(config: Omit<DayOffConfig, 'id' | 'userId' | 'createdAt'>): Prom
         // Atualizar localStorage
         const stored = await this.getUserConfigs();
         const filtered = stored.filter(config => config.id !== configId);
-        this.saveToLocalStorage(filtered);
+        this.setLocalConfigs(filtered);
         
         return true;
       } else {
         // Fallback localStorage
         const stored = await this.getUserConfigs();
         const filtered = stored.filter(config => config.id !== configId);
-        this.saveToLocalStorage(filtered);
+        this.setLocalConfigs(filtered);
         return true;
       }
     } catch (error) {
@@ -309,7 +308,7 @@ async addConfig(config: Omit<DayOffConfig, 'id' | 'userId' | 'createdAt'>): Prom
 
   // ============ FERRAMENTAS ÚTEIS ============
 
-  // Verificar se um dia é folga baseado nas configurações
+  // Verificar se um dia e folga baseado nas configuracoes
   async isDayOff(date: Date): Promise<{
     isDayOff: boolean;
     type: DayOffType | null;
@@ -317,11 +316,17 @@ async addConfig(config: Omit<DayOffConfig, 'id' | 'userId' | 'createdAt'>): Prom
     configId: string | null;
   }> {
     const configs = await this.getUserConfigs();
-    
-    // Verificar folgas fixas
-    const fixedConfigs = configs.filter(config => config.type === 'fixed') as FixedDayOff[];
-    for (const config of fixedConfigs) {
-      if (date.getDay() === config.dayOfWeek) {
+    return this.getDayOffInfo(date, configs);
+  }
+
+  getDayOffInfo(date: Date, configs: DayOffConfig[]): {
+    isDayOff: boolean;
+    type: DayOffType | null;
+    description: string | null;
+    configId: string | null;
+  } {
+    for (const config of configs) {
+      if (config.type === 'fixed' && date.getDay() === config.dayOfWeek) {
         return {
           isDayOff: true,
           type: 'fixed',
@@ -331,13 +336,12 @@ async addConfig(config: Omit<DayOffConfig, 'id' | 'userId' | 'createdAt'>): Prom
       }
     }
 
-    // Verificar folgas regulares
-    const regularConfigs = configs.filter(config => config.type === 'regular') as RegularDayOff[];
-    for (const config of regularConfigs) {
+    for (const config of configs) {
+      if (config.type !== 'regular') continue;
       const configStart = new Date(config.startDate);
       const diffDays = Math.floor((date.getTime() - configStart.getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (diffDays >= 0 && diffDays % config.intervalDays === 0) {
+
+      if (diffDays >= 0 && config.intervalDays > 0 && diffDays % config.intervalDays === 0) {
         return {
           isDayOff: true,
           type: 'regular',
@@ -347,9 +351,8 @@ async addConfig(config: Omit<DayOffConfig, 'id' | 'userId' | 'createdAt'>): Prom
       }
     }
 
-    // Verificar folgas extras
-    const extraConfigs = configs.filter(config => config.type === 'extra') as ExtraDayOff[];
-    for (const config of extraConfigs) {
+    for (const config of configs) {
+      if (config.type !== 'extra') continue;
       const configDate = new Date(config.date);
       if (
         configDate.getDate() === date.getDate() &&
@@ -373,7 +376,7 @@ async addConfig(config: Omit<DayOffConfig, 'id' | 'userId' | 'createdAt'>): Prom
     };
   }
 
-  // Obter estatísticas do mês
+  // Obter estatisticas do mes
   async getMonthStats(month: number, year: number): Promise<{
     totalDays: number;
     fixedDaysOff: number;
@@ -382,32 +385,33 @@ async addConfig(config: Omit<DayOffConfig, 'id' | 'userId' | 'createdAt'>): Prom
     totalDaysOff: number;
     workDays: number;
   }> {
+    return this.getMonthStatsFromConfigs(month, year, await this.getUserConfigs());
+  }
+
+  getMonthStatsFromConfigs(month: number, year: number, configs: DayOffConfig[]): {
+    totalDays: number;
+    fixedDaysOff: number;
+    regularDaysOff: number;
+    extraDaysOff: number;
+    totalDaysOff: number;
+    workDays: number;
+  } {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     let fixedDaysOff = 0;
     let regularDaysOff = 0;
     let extraDaysOff = 0;
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      const dayOffInfo = await this.isDayOff(date);
-      
-      if (dayOffInfo.isDayOff) {
-        switch (dayOffInfo.type) {
-          case 'fixed':
-            fixedDaysOff++;
-            break;
-          case 'regular':
-            regularDaysOff++;
-            break;
-          case 'extra':
-            extraDaysOff++;
-            break;
-        }
-      }
+      const dayOffInfo = this.getDayOffInfo(new Date(year, month, day), configs);
+      if (!dayOffInfo.isDayOff) continue;
+
+      if (dayOffInfo.type === 'fixed') fixedDaysOff++;
+      if (dayOffInfo.type === 'regular') regularDaysOff++;
+      if (dayOffInfo.type === 'extra') extraDaysOff++;
     }
 
     const totalDaysOff = fixedDaysOff + regularDaysOff + extraDaysOff;
-    
+
     return {
       totalDays: daysInMonth,
       fixedDaysOff,
@@ -430,7 +434,7 @@ async addConfig(config: Omit<DayOffConfig, 'id' | 'userId' | 'createdAt'>): Prom
       }
       
       // Tentar uma operação simples
-      const testRef = collection(db, '_test');
+      const testRef = collection(db, 'users', this.userId, COLLECTIONS.DAY_OFF_CONFIGS);
       await getDocs(testRef);
       
       console.log(`✅ Conexão com Firebase OK`);

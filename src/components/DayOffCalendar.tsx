@@ -4,10 +4,6 @@ import { getMonthDays } from '../services/dayOffService';
 import { DayOffConfigService } from '../services/dayOffConfigService';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs } from 'firebase/firestore';
-import { getFirestoreDb } from '../services/firebase';
-// No topo do DayOffCalendar.tsx, adicione:
-import { COLLECTIONS, LOCAL_STORAGE_KEYS } from '../services/dayOffConfigService';
 
 // Ícones
 const Icons = {
@@ -114,13 +110,13 @@ export default function DayOffCalendar() {
 
 
   // Carregar configurações e estatísticas
-  const loadConfigs = useCallback(async (service: DayOffConfigService) => {
+  const loadConfigs = useCallback(async (service: DayOffConfigService, forceRefresh = false) => {
     setLoading(true);
     try {
       console.log(`📅 Carregando configurações para ${currentMonth}/${currentYear}...`);
       
       // 1. Carregar configurações do usuário
-      const configs = await service.getUserConfigs();
+      const configs = await service.getUserConfigs({ forceRefresh });
       console.log(`✅ ${configs.length} configurações carregadas:`, configs);
       
       // 2. Calcular dias do mês atual
@@ -133,38 +129,22 @@ export default function DayOffCalendar() {
         configId: string | null;
       }> = [];
       
-      // 3. Verificar cada dia do mês
+      // 3. Verificar cada dia em memoria, sem reler Firebase/cache por dia.
       for (const day of days) {
-        try {
-          const dayOffInfo = await service.isDayOff(day);
-          dayOffData.push({
-            date: day,
-            isDayOff: dayOffInfo.isDayOff,
-            type: dayOffInfo.type,
-            description: dayOffInfo.description,
-            configId: dayOffInfo.configId
-          });
-          
-          // Log para debug
-          if (dayOffInfo.isDayOff) {
-            console.log(`📌 ${day.toLocaleDateString('pt-BR')}: ${dayOffInfo.type} - ${dayOffInfo.description}`);
-          }
-        } catch (error) {
-          console.error(`❌ Erro ao processar dia ${day.toLocaleDateString('pt-BR')}:`, error);
-          dayOffData.push({
-            date: day,
-            isDayOff: false,
-            type: null,
-            description: null,
-            configId: null
-          });
-        }
+        const dayOffInfo = service.getDayOffInfo(day, configs);
+        dayOffData.push({
+          date: day,
+          isDayOff: dayOffInfo.isDayOff,
+          type: dayOffInfo.type,
+          description: dayOffInfo.description,
+          configId: dayOffInfo.configId
+        });
       }
       
       setDayOffs(dayOffData);
       
       // 4. Calcular estatísticas
-      const stats = await service.getMonthStats(currentMonth, currentYear);
+      const stats = service.getMonthStatsFromConfigs(currentMonth, currentYear, configs);
       console.log('📊 Estatísticas:', stats);
       setDayOffStats(stats);
       
@@ -194,45 +174,19 @@ export default function DayOffCalendar() {
   }, [currentMonth, currentYear]);
 
   useEffect(() => {
-  const syncOnLoad = async () => {
-    if (configService && user?.uid) {
-      // Verificar se precisa sincronizar
-      const lastSync = localStorage.getItem(`@dayoff/last_sync_${user.uid}`);
-      const now = Date.now();
-      
-      // Sincronizar a cada 1 hora
-      if (!lastSync || (now - parseInt(lastSync)) > 3600000) {
-        console.log('🔄 Sincronização automática...');
-        await syncLocalToFirebase();
-      }
-    }
-  };
-  
-  syncOnLoad();
-}, [configService, user]);
-
-const syncLocalToFirebase = async () => {
-  if (!user?.uid || !configService) return;
-  
-  try {
-    // ... código de sincronização acima ...
-    
-    // Atualizar timestamp
-    localStorage.setItem(`@dayoff/last_sync_${user.uid}`, Date.now().toString());
-    
-  } catch (error) {
-    console.error('❌ Erro na sincronização automática:', error);
-  }
-};
-   
-  useEffect(() => {
     if (user) {
       const service = new DayOffConfigService(user.uid);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setConfigService(service);
-      loadConfigs(service);
+    } else {
+      setConfigService(null);
     }
-  }, [user, loadConfigs]);
+  }, [user]);
+
+  useEffect(() => {
+    if (configService) {
+      loadConfigs(configService);
+    }
+  }, [configService, loadConfigs]);
 
   useEffect(() => {
   const checkConnection = async () => {
@@ -284,7 +238,8 @@ const syncLocalToFirebase = async () => {
     if (!configService) return;
 
     try {
-      const dayOffInfo = await configService.isDayOff(date);
+      const configs = await configService.getUserConfigs();
+      const dayOffInfo = configService.getDayOffInfo(date, configs);
       
       if (dayOffInfo.isDayOff && dayOffInfo.type === 'extra') {
         // Remover folga extra existente
@@ -379,7 +334,7 @@ const syncLocalToFirebase = async () => {
           if (configService) {
             console.log('🔄 Tentando reconectar...');
             setFirebaseConnected(null);
-            await loadConfigs(configService);
+            await loadConfigs(configService, true);
           }
         }}
         style={{
@@ -434,96 +389,27 @@ const syncLocalToFirebase = async () => {
         </div>
       </div>
 
-      {/* Adicione após o header */}
-{firebaseConnected !== null && (
-  <div style={{
-    padding: '8px 16px',
-    marginBottom: '20px',
-    background: firebaseConnected 
-      ? 'rgba(16, 185, 129, 0.1)' 
-      : 'rgba(245, 158, 11, 0.1)',
-    border: `1px solid ${firebaseConnected ? '#10b981' : '#f59e0b'}`,
-    borderRadius: '8px',
-    color: firebaseConnected ? '#10b981' : '#f59e0b',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px'
-  }}>
-    {firebaseConnected ? '✅' : '⚠️'}
-    <span>
-      {firebaseConnected 
-        ? 'Conectado ao Firebase' 
-        : 'Modo offline - usando cache local'}
-    </span>
-    
-    {!firebaseConnected && (
-      <button 
-        onClick={async () => {
-          if (configService) {
-            console.log('🔄 Tentando reconectar...');
-            setFirebaseConnected(null);
-            await loadConfigs(configService);
-          }
-        }}
-        style={{
-          marginLeft: 'auto',
-          background: 'transparent',
-          border: '1px solid currentColor',
-          color: 'inherit',
-          padding: '4px 8px',
-          borderRadius: '4px',
-          fontSize: '12px'
-        }}
-      >
-        Tentar reconectar
-      </button>
-    )}
-  </div>
-)}
-
 <button 
   onClick={async () => {
-    if (configService) {
-      console.log('🔄 Forçando sincronização...');
-      
-      // 1. Buscar do Firestore
-      const db = getFirestoreDb();
-      if (db && user?.uid) {
-        // CORREÇÃO: Use COLLECTIONS em vez de collection
-try {
-  const configsRef = collection(db, 'users', user.uid, COLLECTIONS.DAY_OFF_CONFIGS);
-  const snapshot = await getDocs(configsRef);
-  
-  console.log(`✅ ${snapshot.size} configurações do Firestore`);
-  
-  // Salvar no localStorage - use LOCAL_STORAGE_KEYS
-  const configsData: unknown[] = [];
-  snapshot.forEach(doc => {
-    configsData.push({
-      id: doc.id,
-      ...doc.data()
-    });
-  });
-  
-  localStorage.setItem(
-    `${LOCAL_STORAGE_KEYS.DAY_OFF_CONFIGS}_${user.uid}`,
-    JSON.stringify(configsData)
-  );
-  
-  // Recarregar
-  await loadConfigs(configService);
-  alert(`✅ Sincronizado! ${snapshot.size} configurações carregadas.`);
-  
-} catch (error) {
-          console.error('❌ Erro ao sincronizar:', error);
-          alert('❌ Erro ao sincronizar. Verifique a conexão.');
-        }
-      }
+    if (!configService) return;
+
+    console.log('Forcando sincronizacao...');
+    setFirebaseConnected(null);
+
+    try {
+      await configService.getUserConfigs({ forceRefresh: true });
+      await loadConfigs(configService);
+      setFirebaseConnected(true);
+      alert('Sincronizado com Firebase.');
+    } catch (error) {
+      console.error('Erro ao sincronizar:', error);
+      setFirebaseConnected(false);
+      alert('Erro ao sincronizar. Verifique a conexao.');
     }
   }}
   style={styles.syncButton}
 >
-  🔄 Sincronizar
+  Sincronizar
 </button>
 
       {/* CARD DO CALENDÁRIO */}
